@@ -1,13 +1,16 @@
 """The pipeline: summarize → plan → validate (→ revise) → finish (execute, phrase-level octave
 repair, single-note folds) → score → AI revision for leftover range / voicing problems, kept only if
-the finished revision has fewer problems → export."""
+the finished revision has fewer problems → export.
+
+Planner "as_written" hands out the original parts (see planner_as_written) and skips every repair:
+out-of-range notes stay where they are and get an x notehead in the score and in each part."""
 
 from __future__ import annotations
 
 import copy
 
 from . import execute as ex_mod
-from . import planner_greedy
+from . import planner_as_written, planner_greedy
 from .export import original_score, to_midi_b64, to_musicxml, with_title, written_part
 from .plan import role_problems, validate
 from .roster import Roster
@@ -184,6 +187,8 @@ def arrange(ex: Excerpt, roster: Roster, planner: str = "greedy", piece: dict | 
         used_model = model
     elif planner == "greedy":
         plan = planner_greedy.plan(ex, summary, roster, seg_len)
+    elif planner == "as_written":
+        plan = planner_as_written.plan(ex, roster)
     elif planner == "ai":
         from . import planner_ai
         session = planner_ai.Session(summary, roster, ex, backend=ai_backend, model=model, log=log)
@@ -216,18 +221,21 @@ def arrange(ex: Excerpt, roster: Roster, planner: str = "greedy", piece: dict | 
         log("  autofixing remaining structural problems")
         plan = _autofix(plan, ex, roster)
     role_left = role_problems(plan, ex)
+    repair = planner != "as_written"  # "as written" shows the unrepaired parts: no octave repair, no folds
 
     def finish(p: dict):
         """Every candidate plan gets the same deterministic repairs before it is scored: whole-
         phrase octave repair, then single-note folds as a last resort."""
         e = ex_mod.execute(p, ex, roster)
+        if not repair:  # count the notes as they will be engraved, since each gets its own x
+            ex_mod.split_like_engraving(e, roster)
         raw = len(e.violations)
-        if e.violations:
+        if e.violations and repair:
             p2, changed = ex_mod.best_octave_repair(p, ex, roster, seg_len)
             if changed:
                 p, e = p2, ex_mod.execute(p2, ex, roster)
         unfit = [v.to_json(roster) for v in e.violations]
-        if e.violations:
+        if e.violations and repair:
             ex_mod.fold_out_of_range(e, roster)
         v = ex_mod.voicing_issues(p, e, ex, roster)
         bad = {"out_of_range_raw": raw, "out_of_range": len(unfit), "folded": e.notes_folded,
@@ -275,6 +283,10 @@ def arrange(ex: Excerpt, roster: Roster, planner: str = "greedy", piece: dict | 
     if planner == "ai" and any(v["kind"] == "bass_missing" or v["max_semitones"] >= 3 for v in voicing):
         log(f"  {len(voicing)} voicing problem(s); asking the planner to revise")
         try_revision("voicing", voicing)
+    if not repair:
+        marked = ex_mod.mark_out_of_range(exe, roster)
+        if marked != len(exe.violations):  # the x noteheads must be exactly the violations
+            raise RuntimeError(f"marked {marked} x noteheads for {len(exe.violations)} out-of-range notes")
     sc = ex_mod.assemble(ex, exe, roster)
 
     title = piece.get("title", "Excerpt")

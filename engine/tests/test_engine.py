@@ -212,3 +212,89 @@ def test_playback_midi_matches_score_length():
         mf = _midi.MidiFile()
         mf.readstr(_b64.b64decode(res["midi"][key]))
         assert float(_midi.translate.midiFileToStream(mf).highestTime) == 80.0
+
+
+# --- planner "as_written": the original parts handed out, nothing repaired -------------------------
+import re as _re
+
+from coverpart.planner_as_written import NOBODY_LEFT
+
+
+def _x_noteheads(xml: str) -> int:
+    return len(_re.findall(r"<notehead[^>]*>x</notehead>", xml))
+
+
+@pytest.fixture(scope="module")
+def as_written_results(ex):
+    return {rid: arrange(ex, PRESETS[rid], "as_written", log=lambda m: None) for rid in ("church_brass", "sax_trio")}
+
+
+def test_as_written_pairs_by_range_center_and_drops_leftover_parts(as_written_results):
+    res = as_written_results["sax_trio"]
+    pairs = [(a["source_part"], a["player"], a["octave_shift"]) for a in res["plan"]["assignments"]]
+    assert pairs == [("P1", "asx", 0), ("P2", "tsx", 0), ("P3", "bsx", 0)]  # alto > tenor > bari
+    assert [(d["source_part"], d["reason"]) for d in res["plan"]["dropped"]] == [("P4", NOBODY_LEFT)]
+    assert res["checks"]["measures_dropped"] > 0
+    brass = as_written_results["church_brass"]["plan"]["assignments"]
+    assert [a["player"] for a in brass] == ["tp1", "tp2", "hn", "euph"]
+
+
+def test_as_written_leaves_violations_unfolded(as_written_results):
+    for rid, res in as_written_results.items():
+        c = res["checks"]
+        assert c["notes_folded"] == 0, rid
+        assert c["notes_out_of_range"] == c["notes_out_of_range_before_repair"] == len(c["violations"]), rid
+        assert all(a["octave_shift"] == 0 for a in res["plan"]["assignments"]), rid
+    assert as_written_results["church_brass"]["checks"]["notes_out_of_range"] > 0
+
+
+def test_as_written_x_noteheads_are_exactly_the_out_of_range_notes(as_written_results):
+    for rid, res in as_written_results.items():
+        roster = PRESETS[rid]
+        n_oor = res["checks"]["notes_out_of_range"]
+        assert _x_noteheads(res["musicxml"]["arranged"]) == n_oor, rid
+        per_player = {p.id: 0 for p in roster.players}
+        for v in res["checks"]["violations"]:
+            per_player[v["player"]] += 1
+        for pid, xml in res["musicxml"]["parts"].items():
+            assert _x_noteheads(xml) == per_player[pid], (rid, pid)
+        # note by note in the concert score: x iff the player can't reach it, and the line color stays
+        sc = converter.parseData(res["musicxml"]["arranged"])
+        for player, part in zip(roster.players, sc.parts):
+            for n in part.recurse().notes:
+                for comp in (n.notes if n.isChord else [n]):
+                    assert (comp.notehead == "x") == (not player.fits(comp.pitch)), (rid, player.id, comp.pitch)
+                    assert (n.style.color or "").upper() in {"#B3261E", "#1F5FA8", "#2E7D4F", "#B26A00"}
+
+
+def test_ai_and_greedy_get_no_x_noteheads(ex):
+    res = arrange(ex, PRESETS["church_brass"], "greedy", log=lambda m: None)
+    assert _x_noteheads(res["musicxml"]["arranged"]) == 0
+    assert all(_x_noteheads(x) == 0 for x in res["musicxml"]["parts"].values())
+    assert res["checks"]["notes_out_of_range"] == 0
+
+
+def test_mark_out_of_range_marks_only_the_unreachable_chord_note():
+    from music21 import chord as _chord
+    from coverpart.execute import Execution, mark_out_of_range
+    roster = Roster("t", "t", [Player("v", "violin", "beginner")])  # sounding G3-B5
+    part = stream.Part()
+    m = stream.Measure(number=1)
+    c = _chord.Chord(["C3", "G3"])
+    c.style.color = "#2E7D4F"
+    m.append([c, _note.Note("C6")])
+    part.append(m)
+    assert mark_out_of_range(Execution(stream.Score(), {"v": part}), roster) == 2
+    assert [x.notehead for x in c.notes] == ["x", "normal"]
+    xml = to_musicxml(stream.Score([part]))
+    assert _x_noteheads(xml) == 2 and 'color="#2E7D4F"' in xml
+
+
+def test_as_written_counts_notes_as_engraved():
+    # Dvořák op. 96/I bar 1: export splits a fingered-tremolo note into two tied notes to complete
+    # its tuplet. Both get an x, so the count must be taken after that split.
+    ex = _load("osq-dvorak-op96-i-m1-20")
+    res = arrange(ex, PRESETS["sax_trio"], "as_written", log=lambda m: None)
+    n = res["checks"]["notes_out_of_range"]
+    assert n > 0 and _x_noteheads(res["musicxml"]["arranged"]) == n
+    assert sum(_x_noteheads(x) for x in res["musicxml"]["parts"].values()) == n

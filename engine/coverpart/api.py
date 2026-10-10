@@ -37,8 +37,8 @@ def api_arrange(req: ArrangeRequest) -> dict:
     entry = next((e for e in manifest["excerpts"] if e["id"] == req.piece_id), None)
     if entry is None:
         raise HTTPException(404, f"unknown piece {req.piece_id}")
-    if req.planner not in ("ai", "greedy"):
-        raise HTTPException(400, "planner must be ai or greedy")
+    if req.planner not in ("ai", "greedy", "as_written"):
+        raise HTTPException(400, "planner must be ai, greedy or as_written")
     try:
         roster = Roster.from_json(req.roster)
     except (KeyError, ValueError, TypeError, AttributeError) as e:

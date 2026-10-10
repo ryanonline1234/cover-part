@@ -14,6 +14,8 @@ interface NoteEv {
   midi: number;
   vel: number; // 0..127
   prog: number;
+  /** Index into the MIDI file's tracks. The arranged MIDI has one track per player, in roster order. */
+  track: number;
 }
 
 export interface Track {
@@ -26,6 +28,8 @@ export interface Track {
   timeAtMeasure: (m: number) => number;
   /** Seconds -> quarter notes from the start (Verovio timemap's qstamp unit). */
   quarterAt: (sec: number) => number;
+  /** Every MIDI track, in file order (name and note count), so callers can map tracks to players. */
+  trackInfo: Array<{ name: string; notes: number }>;
 }
 
 // General MIDI program number -> gleitz soundfont name.
@@ -59,14 +63,15 @@ export function parseMidi(b64: string, bars: Bar[] = []): Track {
   const midi = new Midi(decodeBase64(b64));
   const events: NoteEv[] = [];
   const programs = new Set<number>();
-  for (const tr of midi.tracks) {
-    if (tr.channel === 9 || tr.instrument.percussion) continue;
+  const trackInfo = midi.tracks.map((tr) => ({ name: tr.name, notes: tr.notes.length }));
+  midi.tracks.forEach((tr, track) => {
+    if (tr.channel === 9 || tr.instrument.percussion) return;
     const prog = tr.instrument.number ?? 0;
     if (tr.notes.length) programs.add(prog);
     for (const n of tr.notes) {
-      events.push({ t: n.time, d: Math.max(0.05, n.duration), midi: n.midi, vel: Math.round(n.velocity * 127), prog });
+      events.push({ t: n.time, d: Math.max(0.05, n.duration), midi: n.midi, vel: Math.round(n.velocity * 127), prog, track });
     }
-  }
+  });
   events.sort((a, b) => a.t - b.t);
 
   const { ppq } = midi.header;
@@ -117,7 +122,7 @@ export function parseMidi(b64: string, bars: Bar[] = []): Track {
     };
   }
   const lastEnd = events.reduce((mx, e) => Math.max(mx, e.t + e.d), 0);
-  return { events, duration: Math.max(midi.duration, lastEnd), programs: [...programs], measureAt, timeAtMeasure, quarterAt };
+  return { events, duration: Math.max(midi.duration, lastEnd), programs: [...programs], measureAt, timeAtMeasure, quarterAt, trackInfo };
 }
 
 type Listener = () => void;
@@ -150,6 +155,8 @@ export type LoadState = { status: "idle" } | { status: "loading"; done: number; 
 export class ABPlayer {
   readonly tracks: Record<Side, Track>;
   side: Side;
+  /** When set, only this MIDI track of the arranged side sounds (one player's part on its own). */
+  solo: number | null = null;
   load: LoadState = { status: "idle" };
   private insts = new Map<number, Soundfont>();
   private playing = false;
@@ -267,6 +274,17 @@ export class ABPlayer {
     }
   }
 
+  /** Play one track of the arranged side on its own (null: everyone). Keeps the playback position. */
+  setSolo(track: number | null) {
+    if (track === this.solo) return;
+    this.solo = track;
+    if (this.playing) {
+      const pos = this.position;
+      this.halt();
+      this.startAt(pos);
+    } else this.emit();
+  }
+
   dispose() {
     this.disposed = true;
     this.halt();
@@ -305,6 +323,7 @@ export class ABPlayer {
     const evs = this.tracks[this.side].events;
     while (this.cursor < evs.length && evs[this.cursor].t < horizon) {
       const e = evs[this.cursor++];
+      if (this.solo !== null && this.side === "arranged" && e.track !== this.solo) continue;
       const when = this.anchorCtx + (e.t - this.anchorPos);
       const end = when + e.d;
       if (end <= now + 0.01) continue; // already over (or seeking into its tail)

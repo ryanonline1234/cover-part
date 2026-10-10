@@ -2,7 +2,8 @@ import type { CSSProperties } from "react";
 import { downloadText, mm, octaveNote, prettyRange, slug, sourceById } from "./music";
 import type { ArrangeResult } from "./types";
 
-export function Plan({ result }: { result: ArrangeResult }) {
+/** `downloads: false` hides the per-player download buttons (the tool's part cards have their own). */
+export function Plan({ result, downloads = true }: { result: ArrangeResult; downloads?: boolean }) {
   const sources = sourceById(result);
   const { plan } = result;
 
@@ -30,7 +31,7 @@ export function Plan({ result }: { result: ArrangeResult }) {
                 <p className="player-range">
                   {p.level ? `${p.level}, ` : ""}written range {prettyRange(p.range_written)}
                 </p>
-                {xml ? (
+                {!downloads ? null : xml ? (
                   <button
                     type="button"
                     className="btn btn--quiet"

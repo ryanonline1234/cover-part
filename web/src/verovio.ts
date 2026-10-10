@@ -28,28 +28,42 @@ export interface Rendered {
   timemap: Array<{ qstamp: number; on: string[] }>;
 }
 
+export interface RenderOptions {
+  /** Verovio scale in percent (staff size). Default: by width, 34-46. */
+  scale?: number;
+  /** Page height in CSS px; default 1.15 x the width. */
+  heightPx?: number;
+  /** Emit a viewBox so CSS can scale the SVG (print). */
+  viewBox?: boolean;
+  /** Margins in Verovio units (default 60 / 40). */
+  marginTop?: number;
+  marginX?: number;
+  /** Skip the timemap (playback cursor data) when it isn't needed. */
+  timemap?: boolean;
+}
+
 /**
  * Render MusicXML to SVG pages that fit `widthPx`. Synchronous once the toolkit is loaded,
  * so concurrent callers can't interleave loadData/render on the shared toolkit.
  */
-export function renderScore(tk: VerovioToolkit, xml: string, widthPx: number): Rendered {
-  const scale = widthPx >= 900 ? 46 : widthPx >= 640 ? 38 : 34;
+export function renderScore(tk: VerovioToolkit, xml: string, widthPx: number, opts: RenderOptions = {}): Rendered {
+  const scale = opts.scale ?? (widthPx >= 900 ? 46 : widthPx >= 640 ? 38 : 34);
   const pageWidth = Math.round((widthPx * 100) / scale);
   tk.setOptions({
     scale,
     pageWidth,
-    pageHeight: Math.round(pageWidth * 1.15),
+    pageHeight: opts.heightPx ? Math.round((opts.heightPx * 100) / scale) : Math.round(pageWidth * 1.15),
     adjustPageHeight: true,
     // Justify the last system too, so short excerpts fill the sheet instead of huddling left.
     minLastJustification: 0,
     breaks: "auto",
     header: "none",
     footer: "none",
-    pageMarginTop: 60,
-    pageMarginBottom: 60,
-    pageMarginLeft: 40,
-    pageMarginRight: 40,
-    svgViewBox: false,
+    pageMarginTop: opts.marginTop ?? 60,
+    pageMarginBottom: opts.marginTop ?? 60,
+    pageMarginLeft: opts.marginX ?? 40,
+    pageMarginRight: opts.marginX ?? 40,
+    svgViewBox: opts.viewBox ?? false,
     svgRemoveXlink: true,
     // data-n on each measure group: lets checks (and future UI) map the cursor to a bar number.
     svgAdditionalAttribute: ["measure@n"],
@@ -59,7 +73,7 @@ export function renderScore(tk: VerovioToolkit, xml: string, widthPx: number): R
   const pages: string[] = [];
   for (let i = 1; i <= n; i++) pages.push(tk.renderToSVG(i));
   let timemap: Rendered["timemap"] = [];
-  try {
+  if (opts.timemap !== false) try {
     timemap = tk
       .renderToTimemap({ includeMeasures: false, includeRests: false })
       .filter((e) => e.on && e.on.length)

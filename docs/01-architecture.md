@@ -48,7 +48,7 @@ One file per (piece, roster, planner) at `web/public/demos/<result_id>.json`, pl
         "range_written": ["D4", "G6"], "range_sounding": ["D4", "G6"] }
     ]
   },
-  "planner": "ai",                       // "ai" | "greedy"
+  "planner": "ai",                       // "ai" | "greedy" | "as_written" (why-page demo data only)
   "model": "claude-opus-5-5",            // null for greedy
   "plan": {
     "summary": "One paragraph: the musical idea of the cover.",
@@ -91,3 +91,15 @@ One file per (piece, roster, planner) at `web/public/demos/<result_id>.json`, pl
 ## API
 
 `POST /api/arrange` body `{ "piece_id": "...", "roster": {players[]}, "planner": "ai"|"greedy" }` → ArrangeResult. A demo-only deploy can omit the API; the web falls back to precomputed results.
+
+## Live API (production)
+
+`POST /api/arrange` is served by a Vercel Python function (`api/index.py`, trimmed music21 wheel in `api/_wheels/`). Body: `{piece_id, roster: {id?, label?, players: [{id, instrument, level?, label?}]}, planner}`. Always send `planner`: `"greedy"` and `"as_written"` work; `"ai"` returns 403 unless `ANTHROPIC_API_KEY` is set. Errors: 400 bad roster/planner, 404 unknown piece, 422 malformed body (detail is an array), 500 engine failure. `GET /api/health` → `{ok, ai}`. Live results have `result_id` ending in `__live`, no `elapsed_s`, `model: null`.
+
+## MIDI layout
+
+Format 1. Track 0 = tempo only; tracks 1..N = players in roster order (same order as `musicxml.parts`), present even when silent. Same-instrument players can share a channel, so solo/mute by track index, not channel. The original MIDI has tracks 1–4 = Violin 1, Violin 2, Viola, Violoncello.
+
+## Web routes
+
+`#/?piece=<id>&band=<preset id | custom list like flute:i,trumpet:b:Sam>&planner=ai|greedy` (tool) and `#/why` (why page). Custom bands always use `planner=greedy`.

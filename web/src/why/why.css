@@ -1,0 +1,1664 @@
+/* Why page. Same desk as the tool: paper ground, engraved ink, hairline rules; the only saturated
+   colors are the source-line colors from the data (set inline as --line / --c).
+   System: the page's apparatus (section rules, bar rulers, spec tables, numbered notes) is drawn as
+   content, structural rules lighter than ornament (awwwards-taste swiss-grid-lab). Every value is
+   scoped under .why so the tool page is untouched. */
+
+.why {
+  --w-ground: var(--ground, #f1ecdf);
+  --w-sheet: var(--sheet, #fcfaf4);
+  --w-ink: var(--ink, #1e1c18);
+  --w-ink-2: var(--ink-2, #57524a);
+  --w-ink-3: var(--ink-3, #8a8375);
+  --w-rule: var(--rule, #cfc6b4);
+  --w-rule-soft: var(--rule-soft, #e2dbcb);
+  --w-display: var(--display, "Fraunces", "Iowan Old Style", Georgia, serif);
+  --w-text: var(--text, "Source Serif 4", "Iowan Old Style", Georgia, serif);
+  --w-gutter: clamp(16px, 4vw, 44px);
+  /* motion tokens (animation-formatting): enter = decelerate, move = standard */
+  --w-enter: cubic-bezier(0, 0, 0.2, 1);
+  --w-move: cubic-bezier(0.2, 0, 0, 1);
+
+  min-height: 100vh;
+  background: var(--w-ground);
+  color: var(--w-ink);
+  font-family: var(--w-text);
+  font-size: 17px;
+  line-height: 1.55;
+  overflow-x: clip;
+}
+
+.why *,
+.why *::before,
+.why *::after {
+  box-sizing: border-box;
+}
+
+.why p {
+  margin: 0;
+}
+
+.why button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.why button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.why :focus-visible {
+  outline: 2px solid var(--w-ink);
+  outline-offset: 3px;
+}
+
+.why a {
+  color: inherit;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+}
+
+.why .sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* chrome: small caps on the text face, like score markings */
+.why-app-k,
+.why-top-k,
+.why-notes-label,
+.why-sub-k,
+.why-range-group,
+.why-pipe-who,
+.why-tl-label small,
+.why-toc {
+  font-variant-caps: all-small-caps;
+  letter-spacing: 0.05em;
+}
+
+.why-num {
+  font-variant-numeric: lining-nums tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* ---------- top bar ---------- */
+
+.why-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.3rem 1.4rem;
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 1.3rem var(--w-gutter) 1rem;
+  border-bottom: 1px solid var(--w-rule);
+}
+
+.why-wordmark {
+  font-family: var(--w-display);
+  font-style: italic;
+  font-weight: 620;
+  font-size: 1.3rem;
+  font-variation-settings: "opsz" 48, "SOFT" 40, "WONK" 1;
+  text-decoration: none;
+}
+
+.why-top-k {
+  color: var(--w-ink-3);
+  font-size: 1rem;
+}
+
+.why-top-cta {
+  margin-left: auto;
+  font-size: 0.95rem;
+}
+
+/* ---------- page ---------- */
+
+.why-main {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0 var(--w-gutter) 5rem;
+}
+
+.why-draft {
+  margin-top: 1.2rem;
+  padding: 0.45rem 0.75rem;
+  border: 1px dashed var(--w-rule);
+  color: var(--w-ink-3);
+  font-size: 0.86rem;
+  font-style: italic;
+}
+
+.why-toc {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 1.4rem;
+  margin-top: 1rem;
+  font-size: 0.98rem;
+}
+
+.why-toc button {
+  padding: 0.25rem 0;
+  border: 0;
+  background: none;
+  color: var(--w-ink-2);
+  text-align: left;
+}
+
+.why-toc button:hover,
+.why-toc button:focus-visible {
+  color: var(--w-ink);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.why-toc-n {
+  font-family: var(--w-display);
+  font-style: italic;
+  font-variant-caps: normal;
+  color: var(--w-ink-3);
+}
+
+/* ---------- sections ---------- */
+
+.why-sec {
+  margin-top: clamp(4.5rem, 10vw, 8rem);
+}
+
+.why-sec--hero {
+  margin-top: clamp(2.2rem, 5vw, 3.5rem);
+}
+
+/* The apparatus row: a ruled header carrying the section number and its data source. */
+.why-apparatus {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.2rem 1rem;
+  padding-top: 0.55rem;
+  color: var(--w-ink-3);
+  font-size: 0.86rem;
+}
+
+.why-apparatus::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 1px;
+  background: var(--w-ink);
+  transform-origin: left center;
+}
+
+.why-app-n {
+  font-family: var(--w-display);
+  font-style: italic;
+  font-size: 1rem;
+  color: var(--w-ink);
+}
+
+.why-app-src {
+  margin-left: auto;
+  font-size: 0.74rem;
+  font-style: italic;
+  overflow-wrap: anywhere;
+  text-align: right;
+}
+
+.why-h {
+  margin: 0;
+  font-family: var(--w-display);
+  font-weight: 400;
+  font-size: clamp(1.85rem, 3.3vw, 2.85rem);
+  line-height: 1.04;
+  letter-spacing: -0.02em;
+  font-variation-settings: "opsz" 96, "SOFT" 30;
+  text-wrap: balance;
+}
+
+.why-h--hero {
+  max-width: 15ch;
+  margin-top: clamp(1.4rem, 3vw, 2.4rem);
+  font-weight: 340;
+  font-size: clamp(2.6rem, 7vw, 6.1rem);
+  line-height: 0.97;
+  letter-spacing: -0.03em;
+  font-variation-settings: "opsz" 144, "SOFT" 50, "WONK" 1;
+}
+
+.why-sec-grid {
+  display: grid;
+  grid-template-columns: minmax(15rem, 4fr) minmax(0, 9fr);
+  gap: 1.6rem clamp(1.5rem, 3.6vw, 3.6rem);
+  align-items: start;
+  margin-top: 1.5rem;
+}
+
+.why-sec--hero .why-sec-grid {
+  margin-top: clamp(1.6rem, 3.5vw, 2.8rem);
+}
+
+.why-sec--wide .why-sec-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.why-sec--wide .why-prose {
+  display: grid;
+  grid-template-columns: minmax(15rem, 4fr) minmax(0, 9fr);
+  gap: 1rem clamp(1.5rem, 3.6vw, 3.6rem);
+  align-items: start;
+}
+
+.why-prose.is-sticky {
+  position: sticky;
+  top: 1.25rem;
+}
+
+.why-sec--wide .why-prose.is-sticky {
+  position: static;
+}
+
+.why-demo {
+  min-width: 0;
+}
+
+/* ---------- notes (facts) and text ---------- */
+
+.why-notes {
+  margin-top: 1.3rem;
+}
+
+.why-sec--hero .why-notes,
+.why-sec--wide .why-notes {
+  margin-top: 0;
+}
+
+.why-notes-label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.1rem 0.7rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid var(--w-ink);
+  font-size: 0.95rem;
+  color: var(--w-ink);
+}
+
+.why-notes-hint {
+  color: var(--w-ink-3);
+  font-size: 0.8rem;
+  font-style: italic;
+  font-variant-caps: normal;
+  letter-spacing: 0;
+}
+
+.why-notes ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.why-notes li {
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr);
+  column-gap: 0.2rem;
+  padding: 0.6rem 0 0.65rem;
+  border-bottom: 1px solid var(--w-rule-soft);
+  font-size: 0.93rem;
+  line-height: 1.45;
+  color: var(--w-ink-2);
+}
+
+.why-note-n {
+  font-family: var(--w-display);
+  font-style: italic;
+  color: var(--w-ink-3);
+}
+
+.why-note-src {
+  grid-column: 2;
+  margin-top: 0.25rem;
+  font-size: 0.74rem;
+  font-style: italic;
+  color: var(--w-ink-3);
+  overflow-wrap: anywhere;
+}
+
+.why-val {
+  color: var(--w-ink);
+  font-weight: 600;
+  font-variant-numeric: lining-nums;
+}
+
+.why-pending {
+  color: var(--w-ink-3);
+}
+
+.why-text p {
+  max-width: 62ch;
+  margin-top: 1rem;
+  font-size: 1.06rem;
+  line-height: 1.62;
+}
+
+/* ---------- panels: a sheet on the desk ---------- */
+
+.why-panel {
+  background: var(--w-sheet);
+  border: 1px solid var(--w-rule);
+  box-shadow: 3px 3px 0 var(--w-rule-soft);
+  padding: clamp(0.9rem, 2.2vw, 1.6rem);
+}
+
+.why-panel-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem 1.2rem;
+  padding-bottom: 0.85rem;
+  margin-bottom: 1.1rem;
+  border-bottom: 1px solid var(--w-rule-soft);
+}
+
+.why-panel-title {
+  font-family: var(--w-display);
+  font-style: italic;
+  font-size: 1.05rem;
+  line-height: 1.3;
+  font-variation-settings: "opsz" 24;
+}
+
+.why-panel-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem 1.1rem;
+  margin-top: 1.1rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--w-rule-soft);
+}
+
+.why-cap {
+  font-size: 0.84rem;
+  font-style: italic;
+  color: var(--w-ink-3);
+  line-height: 1.45;
+}
+
+figcaption.why-cap {
+  margin-top: 0.7rem;
+}
+
+.why-error {
+  margin: 0.8rem 0;
+  padding: 0.5rem 0.75rem;
+  border-left: 2px solid var(--w-ink);
+  font-size: 0.9rem;
+}
+
+.why-loading {
+  padding: 2rem 0;
+  color: var(--w-ink-3);
+  font-style: italic;
+}
+
+.why figure {
+  margin: 0;
+}
+
+/* ---------- controls ---------- */
+
+.why-bands,
+.why-switch {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.why-bands button,
+.why-switch button,
+.why-btn {
+  min-height: 2.1rem;
+  padding: 0.3rem 0.75rem;
+  border: 1px solid var(--w-rule);
+  background: transparent;
+  font-size: 0.9rem;
+  line-height: 1.2;
+  transition:
+    background-color 150ms var(--w-enter),
+    border-color 150ms var(--w-enter),
+    color 150ms var(--w-enter);
+}
+
+.why-bands button:hover,
+.why-switch button:hover,
+.why-btn:hover:not(:disabled) {
+  border-color: var(--w-ink);
+}
+
+/* Selection reads as "this one" (ink rule + desk fill); the only solid-ink control is Play. */
+.why-bands button.is-on,
+.why-switch button.is-on {
+  border-color: var(--w-ink);
+  background: var(--w-ground);
+  box-shadow: inset 0 -3px 0 var(--w-ink);
+  font-weight: 600;
+}
+
+.why-switch {
+  gap: 0;
+}
+
+.why-switch button + button {
+  margin-left: -1px;
+}
+
+.why-switch button.is-on {
+  position: relative;
+}
+
+.why-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem 1rem;
+  margin: 1.1rem 0 0.4rem;
+}
+
+.why-play-wrap {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.8rem;
+}
+
+.why .why-play {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-height: 2.3rem;
+  padding: 0.35rem 1rem 0.35rem 0.8rem;
+  border: 1px solid var(--w-ink);
+  background: var(--w-ink);
+  color: var(--w-sheet);
+  font-size: 0.94rem;
+}
+
+.why .why-play:hover:not(:disabled) {
+  background: var(--w-ink-2);
+}
+
+.why-play-icon {
+  width: 0;
+  height: 0;
+  border-top: 0.38rem solid transparent;
+  border-bottom: 0.38rem solid transparent;
+  border-left: 0.62rem solid currentColor;
+}
+
+.why-play[data-state="playing"] .why-play-icon {
+  width: 0.62rem;
+  height: 0.76rem;
+  border: 0;
+  border-left: 0.2rem solid currentColor;
+  border-right: 0.2rem solid currentColor;
+}
+
+.why-play[data-state="loading"] .why-play-icon {
+  border-left-color: var(--w-ink-3);
+}
+
+.why-play-err {
+  font-size: 0.82rem;
+  color: var(--w-ink-2);
+}
+
+/* ---------- opening: range chart ---------- */
+
+.why-range-grid {
+  --label-w: 11.5rem;
+  display: grid;
+  row-gap: 0.4rem;
+}
+
+.why-range-group {
+  margin-top: 0.5rem;
+  color: var(--w-ink-3);
+  font-size: 0.88rem;
+}
+
+.why-range-group:first-child {
+  margin-top: 0;
+}
+
+.why-range-row {
+  display: grid;
+  grid-template-columns: var(--label-w) minmax(0, 1fr);
+  align-items: center;
+  column-gap: 0.9rem;
+}
+
+.why-range-name {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.9rem;
+  line-height: 1.2;
+  min-width: 0;
+}
+
+.why-swatch {
+  flex: none;
+  width: 0.7rem;
+  height: 0.7rem;
+  background: var(--line, var(--w-ink));
+}
+
+.why-range-track {
+  position: relative;
+  height: 1.35rem;
+  margin-right: 4.6rem; /* room for the value label right of the bar */
+}
+
+.why-range-track::before {
+  content: "";
+  position: absolute;
+  inset: 50% 0 auto 0;
+  height: 1px;
+  background: var(--w-rule-soft);
+}
+
+.why-range-bar {
+  position: absolute;
+  top: 0.2rem;
+  bottom: 0.2rem;
+}
+
+.why-range-bar.is-line {
+  background: var(--line);
+}
+
+.why-range-bar.is-player {
+  border: 1.5px solid var(--w-ink);
+  background: var(--w-sheet);
+}
+
+.why-range-out {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: repeating-linear-gradient(135deg, var(--w-ink) 0 1.5px, transparent 1.5px 4.5px);
+  border: 1px solid var(--w-ink);
+}
+
+.why-range-val {
+  position: absolute;
+  top: 50%;
+  padding-left: 0.45rem;
+  transform: translateY(-50%);
+  font-size: 0.78rem;
+  color: var(--w-ink-2);
+  white-space: nowrap;
+  font-variant-numeric: lining-nums;
+}
+
+.why-range-axis {
+  margin-top: 0.3rem;
+}
+
+.why-range-axis .why-range-name {
+  color: var(--w-ink-3);
+  font-size: 0.78rem;
+  font-style: italic;
+}
+
+.why-keys {
+  height: 1.9rem;
+}
+
+.why-keys::before {
+  inset: 0 0 auto 0;
+  background: var(--w-ink);
+}
+
+.why-key {
+  position: absolute;
+  top: 0;
+  width: 1px;
+  height: 0.55rem;
+  background: var(--w-ink-3);
+}
+
+.why-key.is-black {
+  height: 0.35rem;
+  background: var(--w-rule);
+}
+
+.why-key-c {
+  position: absolute;
+  top: 0.7rem;
+  left: 0;
+  transform: translateX(-50%);
+  font-size: 0.72rem;
+  color: var(--w-ink-3);
+}
+
+/* ---------- demo 1: as written ---------- */
+
+.why-mapping {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 1.2rem;
+  margin: 0 0 0.4rem;
+  padding: 0;
+  list-style: none;
+  font-size: 0.9rem;
+}
+
+.why-mapping li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.why-mapping li.is-unmapped {
+  color: var(--w-ink-3);
+}
+
+.why-arrow {
+  color: var(--w-ink-3);
+}
+
+.why-readout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 1rem 2rem;
+  align-items: end;
+  margin: 1rem 0 1.2rem;
+}
+
+.why-big {
+  display: flex;
+  align-items: baseline;
+  gap: 0.8rem;
+}
+
+.why-big-n {
+  display: inline-block;
+  font-family: var(--w-display);
+  font-weight: 330;
+  font-size: clamp(3.6rem, 8vw, 6rem);
+  line-height: 0.9;
+  letter-spacing: -0.03em;
+  font-variant-numeric: lining-nums tabular-nums;
+  font-variation-settings: "opsz" 144;
+}
+
+.why-big-l {
+  display: grid;
+  gap: 0.2rem;
+  font-size: 1rem;
+  line-height: 1.25;
+}
+
+.why-big-l small {
+  font-size: 0.82rem;
+  color: var(--w-ink-3);
+}
+
+.why-tally {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.86rem;
+}
+
+.why-tally th,
+.why-tally td {
+  padding: 0.22rem 0;
+  border-bottom: 1px solid var(--w-rule-soft);
+  font-weight: 400;
+  text-align: left;
+}
+
+.why-tally th {
+  padding-right: 0.8rem;
+  white-space: nowrap;
+}
+
+.why-tally-bar {
+  width: 45%;
+  padding-right: 0.6rem !important;
+}
+
+.why-tally-bar span {
+  display: block;
+  height: 0.55rem;
+  background: var(--w-ink);
+  transform-origin: left center;
+  transition: transform 350ms var(--w-move);
+}
+
+.why-tally td.why-num {
+  width: 2.5rem;
+}
+
+.why-score {
+  margin-top: 0.4rem;
+}
+
+.why-score .score-status {
+  padding: 2rem 0;
+  color: var(--w-ink-3);
+  font-style: italic;
+}
+
+.why-score .sheet {
+  background: var(--w-sheet);
+  border: 1px solid var(--w-rule-soft);
+}
+
+.why-score .sheet svg {
+  display: block;
+  max-width: none;
+  height: auto;
+}
+
+.why-score .score {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+
+.why-score .score-pages {
+  position: relative;
+  display: grid;
+  gap: 0.8rem;
+  width: max-content;
+  min-width: 100%;
+}
+
+.why-score .score-cursor {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 24px;
+  margin-left: -12px;
+  background: rgba(30, 28, 24, 0.08);
+  border-left: 1px solid rgba(30, 28, 24, 0.35);
+  border-right: 1px solid rgba(30, 28, 24, 0.35);
+  pointer-events: none;
+  opacity: 0;
+}
+
+.why-score > .why-cap {
+  margin-top: 0.55rem;
+}
+
+/* ---------- demo 2/4: melody timeline ---------- */
+
+.why-tl {
+  position: relative;
+}
+
+.why-tl-grid {
+  --label-w: 10.5rem;
+  --score-w: 5.5rem;
+  position: relative;
+  display: grid;
+  row-gap: 0.45rem;
+}
+
+.why-tl-row {
+  display: grid;
+  grid-template-columns: var(--label-w) minmax(0, 1fr) var(--score-w);
+  align-items: center;
+  column-gap: 0.9rem;
+}
+
+.why-tl-label {
+  display: grid;
+  font-size: 0.92rem;
+  line-height: 1.2;
+}
+
+.why-tl-label small {
+  color: var(--w-ink-3);
+  font-size: 0.76rem;
+}
+
+.why-tl-cells {
+  display: grid;
+  grid-template-columns: repeat(var(--n), minmax(0, 1fr));
+  gap: 2px;
+}
+
+.why-tl-ruler .why-tl-cells {
+  border-bottom: 1px solid var(--w-ink);
+}
+
+.why-tl-bar {
+  padding-bottom: 0.15rem;
+  font-size: 0.72rem;
+  color: var(--w-ink-3);
+  text-align: center;
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+.why-tl-bar.is-cur {
+  color: var(--w-ink);
+  font-weight: 650;
+}
+
+.why-tl-cell {
+  position: relative;
+  height: 1.7rem;
+  background: var(--c);
+}
+
+.why-tl-cell.is-none {
+  background: repeating-linear-gradient(90deg, var(--w-rule-soft) 0 1px, transparent 1px 5px);
+}
+
+/* wrong line labeled melody: a cross-hatch over the cell and a dark tick under it */
+.why-tl-cell.is-miss::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(135deg, rgba(252, 250, 244, 0.85) 0 2px, transparent 2px 5px);
+}
+
+.why-tl-cell.is-miss::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 -5px 0;
+  height: 3px;
+  background: var(--w-ink);
+}
+
+.why-tl-cell.is-cur {
+  outline: 2px solid var(--w-ink);
+  outline-offset: 1px;
+  z-index: 1;
+}
+
+.why-tl-row.is-ref .why-tl-label {
+  font-weight: 600;
+}
+
+.why-tl-score {
+  display: grid;
+  text-align: right;
+  line-height: 1.1;
+}
+
+.why-tl-score b {
+  font-family: var(--w-display);
+  font-weight: 500;
+  font-size: 1.45rem;
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+.why-tl-score small {
+  font-size: 0.74rem;
+  color: var(--w-ink-3);
+}
+
+/* playhead across all rows, positioned over the cells column */
+.why-tl-playhead {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(var(--label-w) + 0.9rem);
+  right: calc(var(--score-w) + 0.9rem);
+  pointer-events: none;
+  opacity: var(--ph-o, 0);
+}
+
+.why-tl-playhead::before {
+  content: "";
+  position: absolute;
+  top: -0.2rem;
+  bottom: -0.2rem;
+  left: var(--ph, 0%);
+  width: 2px;
+  margin-left: -1px;
+  background: var(--w-ink);
+}
+
+.why-tl-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 1.1rem;
+  margin-top: 0.9rem;
+  font-size: 0.82rem;
+  color: var(--w-ink-2);
+}
+
+.why-tl-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.why-tl-legend i {
+  width: 0.8rem;
+  height: 0.6rem;
+  background: var(--c);
+}
+
+.why-tl-key-miss i {
+  background: repeating-linear-gradient(135deg, var(--w-ink-3) 0 1.5px, transparent 1.5px 4px);
+  border-bottom: 3px solid var(--w-ink);
+}
+
+.why-tl-live {
+  min-height: 2.6em;
+}
+
+/* ---------- demo 3: the loop ---------- */
+
+.why-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0 0 1.1rem;
+  padding: 0;
+  list-style: none;
+}
+
+.why-step {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  min-height: 2.6rem;
+  padding: 0.35rem 0.8rem 0.35rem 0.45rem;
+  border: 1px solid var(--w-rule);
+  background: transparent;
+  text-align: left;
+  transition:
+    background-color 150ms var(--w-enter),
+    border-color 150ms var(--w-enter);
+}
+
+.why-step:hover {
+  border-color: var(--w-ink);
+}
+
+.why-step.is-on {
+  border-color: var(--w-ink);
+  background: var(--w-ground);
+  box-shadow: inset 0 -3px 0 var(--w-ink);
+}
+
+.why-step.is-on .why-step-n {
+  background: var(--w-ink);
+  color: var(--w-sheet);
+  border-color: var(--w-ink);
+}
+
+.why-step-n {
+  display: inline-grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 1px solid currentColor;
+  font-family: var(--w-display);
+  font-size: 0.85rem;
+}
+
+.why-step-l {
+  display: grid;
+  font-size: 0.9rem;
+  line-height: 1.2;
+}
+
+.why-step-l small {
+  font-size: 0.74rem;
+  opacity: 0.75;
+}
+
+.why-step.is-rejected:not(.is-on) .why-step-l {
+  text-decoration: line-through;
+  text-decoration-color: var(--w-ink-3);
+}
+
+.why-loop {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: 1.4rem 2rem;
+  align-items: start;
+}
+
+.why-loop-head {
+  margin-bottom: 0.7rem;
+  font-size: 0.95rem;
+  color: var(--w-ink-2);
+}
+
+.why-ledger,
+.why-mini {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.why-ledger th,
+.why-ledger td,
+.why-mini th,
+.why-mini td {
+  padding: 0.38rem 0.6rem 0.38rem 0;
+  border-bottom: 1px solid var(--w-rule-soft);
+  font-weight: 400;
+  text-align: left;
+  vertical-align: top;
+}
+
+.why-ledger thead th,
+.why-mini thead th {
+  border-bottom: 1px solid var(--w-ink);
+  font-size: 0.78rem;
+  color: var(--w-ink-3);
+}
+
+.why-ledger td,
+.why-mini td.why-num,
+.why-mini th.why-num {
+  text-align: right;
+  padding-right: 0;
+  padding-left: 0.6rem;
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+.why-ledger td {
+  font-family: var(--w-display);
+  font-size: 1.08rem;
+}
+
+.why-ledger-total th,
+.why-ledger-total td {
+  border-top: 1px solid var(--w-ink);
+  border-bottom: 0;
+  font-weight: 650;
+}
+
+.why-verdict {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.2rem 0.8rem;
+  margin-top: 0.9rem;
+}
+
+.why-verdict b {
+  padding: 0.12rem 0.55rem;
+  border: 1.5px solid var(--w-ink);
+  font-weight: 650;
+  font-variant-caps: all-small-caps;
+  letter-spacing: 0.08em;
+}
+
+.why-verdict.is-kept b {
+  background: var(--w-ink);
+  color: var(--w-sheet);
+}
+
+.why-verdict.is-rejected b {
+  text-decoration: line-through;
+}
+
+.why-verdict span {
+  font-variant-numeric: lining-nums;
+}
+
+.why-totals {
+  display: grid;
+  row-gap: 0.4rem;
+}
+
+.why-total-row {
+  display: grid;
+  grid-template-columns: 7.5rem minmax(0, 1fr) 2.2rem;
+  align-items: center;
+  column-gap: 0.7rem;
+  font-size: 0.86rem;
+  color: var(--w-ink-3);
+}
+
+.why-total-row.is-on,
+.why-total-row.is-baseline {
+  color: var(--w-ink);
+}
+
+.why-total-track {
+  height: 0.85rem;
+  border-left: 1px solid var(--w-ink);
+}
+
+.why-total-bar {
+  display: block;
+  height: 100%;
+  background: var(--w-ink-3);
+  transform-origin: left center;
+  transition:
+    transform 350ms var(--w-move),
+    background-color 150ms var(--w-enter);
+}
+
+.why-total-row.is-on .why-total-bar {
+  background: var(--w-ink);
+}
+
+.why-total-row.is-rejected .why-total-bar {
+  background: repeating-linear-gradient(135deg, var(--w-ink-3) 0 1.5px, transparent 1.5px 4px);
+  outline: 1px solid var(--w-ink-3);
+  outline-offset: -1px;
+}
+
+.why-total-row.is-baseline {
+  margin-top: 0.35rem;
+  padding-top: 0.45rem;
+  border-top: 1px dashed var(--w-rule);
+}
+
+.why-total-row.is-baseline .why-total-bar {
+  background: transparent;
+  outline: 1.5px solid var(--w-ink);
+  outline-offset: -1.5px;
+}
+
+.why-btn {
+  font-size: 0.92rem;
+}
+
+/* ---------- demo 4 ---------- */
+
+.why-panel--stack {
+  display: grid;
+  gap: 2rem;
+}
+
+.why-sub {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.why-sub + .why-sub {
+  padding-top: 1.6rem;
+  border-top: 1px solid var(--w-rule-soft);
+}
+
+.why-sub-k {
+  font-size: 1rem;
+  color: var(--w-ink);
+}
+
+.why-stack {
+  display: grid;
+  row-gap: 0.55rem;
+}
+
+.why-stack-row {
+  display: grid;
+  grid-template-columns: 8rem minmax(0, 1fr) 2.6rem;
+  align-items: center;
+  column-gap: 0.8rem;
+  font-size: 0.9rem;
+}
+
+.why-stack-track {
+  display: flex;
+  height: 1.6rem;
+  border-left: 1px solid var(--w-ink);
+}
+
+.why-stack-seg {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  background: var(--shade);
+  border-right: 1px solid var(--w-sheet);
+  color: var(--w-sheet);
+  font-size: 0.72rem;
+  font-variant-numeric: lining-nums tabular-nums;
+  overflow: hidden;
+}
+
+.why-stack-total {
+  font-family: var(--w-display);
+  font-size: 1.15rem;
+}
+
+.why-stack-key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 1rem;
+  font-size: 0.8rem;
+  color: var(--w-ink-2);
+}
+
+.why-stack-key span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.why-stack-key i {
+  width: 0.8rem;
+  height: 0.6rem;
+  background: var(--shade);
+}
+
+.why-mini caption {
+  padding-bottom: 0.35rem;
+  text-align: left;
+  font-size: 0.8rem;
+  font-style: italic;
+  color: var(--w-ink-3);
+}
+
+.why-mini {
+  max-width: 30rem;
+}
+
+.why-measured {
+  max-width: none;
+}
+
+.why-measured td {
+  white-space: nowrap;
+  color: var(--w-ink-3);
+  font-size: 0.82rem;
+  text-align: right;
+}
+
+.why-measured tr.is-unmeasured th,
+.why-measured tr.is-unmeasured td {
+  border-top: 1px solid var(--w-ink);
+  border-bottom: 1px solid var(--w-ink);
+  color: var(--w-ink);
+  font-weight: 650;
+}
+
+/* ---------- evidence ---------- */
+
+.why-evidence {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2.4rem;
+}
+
+.why-board,
+.why-pipe {
+  min-width: 0;
+}
+
+.why-pipe ol {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: none;
+}
+
+.why-pipe-step {
+  position: relative;
+  display: grid;
+  align-content: start;
+  gap: 0.35rem;
+  padding: 0.9rem 1.1rem 1rem 0;
+  border-top: 1px solid var(--w-ink);
+}
+
+.why-pipe-step + .why-pipe-step {
+  padding-left: 1.1rem;
+  border-left: 1px solid var(--w-rule-soft);
+}
+
+/* the AI step is the only one set on the sheet, so the one judgment step stands apart */
+.why-pipe-step.is-ai {
+  background: var(--w-sheet);
+  border-top-width: 3px;
+  border-left: 1px solid var(--w-rule);
+  border-right: 1px solid var(--w-rule);
+}
+
+.why-pipe-n {
+  font-family: var(--w-display);
+  font-style: italic;
+  font-size: 1.6rem;
+  line-height: 1;
+}
+
+.why-pipe-who {
+  font-size: 0.8rem;
+  color: var(--w-ink-3);
+}
+
+.why-pipe-t {
+  font-family: var(--w-display);
+  font-size: 1.12rem;
+  line-height: 1.2;
+}
+
+.why-pipe-b {
+  font-size: 0.86rem;
+  line-height: 1.45;
+  color: var(--w-ink-2);
+}
+
+.why-pipe-files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 0.7rem;
+  margin-top: 0.2rem;
+  font-size: 0.8rem;
+}
+
+/* Scoreboard (shared component): keep it legible here even if the tool's stylesheet changes. */
+.why-board .table-scroll {
+  position: relative;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+
+.why-board .block-lede {
+  max-width: 64ch;
+  margin: 0 0 1.2rem;
+  color: var(--w-ink-2);
+}
+
+.why-board .tally,
+.why-board .pairs {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+.why-board .tally th,
+.why-board .tally td,
+.why-board .pairs th,
+.why-board .pairs td {
+  padding: 0.5rem 0.9rem 0.5rem 0;
+  border-bottom: 1px solid var(--w-rule);
+  text-align: left;
+  font-weight: 400;
+  vertical-align: top;
+}
+
+.why-board .tally .num,
+.why-board .pairs .num {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.why-board .is-better {
+  color: var(--w-ink);
+  font-weight: 650;
+}
+
+.why-board .ledger-label,
+.why-board .ledger-def {
+  display: block;
+}
+
+.why-board .ledger-def {
+  font-size: 0.78rem;
+  color: var(--w-ink-3);
+}
+
+.why-board .winbar {
+  display: flex;
+  width: 10rem;
+  height: 10px;
+  margin-top: 0.45rem;
+  border: 1px solid var(--w-ink);
+}
+
+.why-board .winbar-a {
+  width: calc(var(--a) * 100%);
+  background: var(--w-ink);
+}
+
+.why-board .winbar-t {
+  width: calc(var(--t) * 100%);
+  background: var(--w-rule-soft);
+}
+
+.why-board .winbar-g {
+  width: calc(var(--g) * 100%);
+  background: repeating-linear-gradient(135deg, var(--w-ink-2) 0 1.5px, transparent 1.5px 4px);
+}
+
+.why-board .pairs-title {
+  margin: 2.4rem 0 0.6rem;
+  font-family: var(--w-display);
+  font-weight: 450;
+  font-size: 1.35rem;
+}
+
+.why-board .pairs {
+  font-size: 0.88rem;
+}
+
+.why-board .row-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-color: var(--w-rule);
+  text-underline-offset: 0.2em;
+}
+
+/* ---------- close ---------- */
+
+.why-close {
+  margin-top: clamp(5rem, 11vw, 9rem);
+}
+
+.why-close-h {
+  margin: 1.6rem 0 0;
+  font-family: var(--w-display);
+  font-weight: 340;
+  font-size: clamp(2.4rem, 6.5vw, 5.4rem);
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-variation-settings: "opsz" 144, "SOFT" 50, "WONK" 1;
+}
+
+.why-close-h a {
+  text-decoration: none;
+  background-image: linear-gradient(var(--w-ink), var(--w-ink));
+  background-size: 100% 2px;
+  background-position: 0 100%;
+  background-repeat: no-repeat;
+  padding-bottom: 0.08em;
+}
+
+.why-close-h a:hover,
+.why-close-h a:focus-visible {
+  background-size: 100% 5px;
+}
+
+/* ---------- motion (only when JS adds .why--motion, i.e. not reduced) ---------- */
+
+@media (prefers-reduced-motion: no-preference) {
+  .why--motion .why-sec .why-apparatus::before {
+    transform: scaleX(0);
+    transition: transform 500ms var(--w-enter);
+  }
+  .why--motion .why-sec .why-h,
+  .why--motion .why-sec .why-notes,
+  .why--motion .why-sec .why-text {
+    opacity: 0;
+    transform: translate3d(0, 12px, 0);
+    transition:
+      opacity 350ms var(--w-enter),
+      transform 350ms var(--w-enter);
+  }
+  .why--motion .why-sec .why-notes,
+  .why--motion .why-sec .why-text {
+    transition-delay: 60ms;
+  }
+  .why--motion .why-sec.is-in .why-apparatus::before {
+    transform: scaleX(1);
+  }
+  .why--motion .why-sec.is-in .why-h,
+  .why--motion .why-sec.is-in .why-notes,
+  .why--motion .why-sec.is-in .why-text {
+    opacity: 1;
+    transform: none;
+  }
+
+  /* a changed number settles in (keyed remount) */
+  .why-big-n {
+    animation: why-settle 250ms var(--w-enter) both;
+  }
+  .why-loop-detail {
+    animation: why-fade 250ms var(--w-enter) both;
+  }
+  @keyframes why-settle {
+    from {
+      opacity: 0;
+      transform: translate3d(0, 6px, 0);
+    }
+  }
+  @keyframes why-fade {
+    from {
+      opacity: 0;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .why *,
+  .why *::before,
+  .why *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* ---------- narrow screens ---------- */
+
+@media (max-width: 980px) {
+  .why-sec-grid,
+  .why-sec--wide .why-prose {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .why-prose.is-sticky {
+    position: static;
+  }
+  .why-pipe ol {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .why-pipe-step,
+  .why-pipe-step + .why-pipe-step {
+    display: grid;
+    grid-template-columns: 2.4rem minmax(0, 1fr);
+    column-gap: 0.6rem;
+    padding: 0.8rem 0.8rem 0.9rem 0;
+    border-left: 0;
+  }
+  .why-pipe-step > :not(.why-pipe-n) {
+    grid-column: 2;
+  }
+  .why-pipe-step .why-pipe-n {
+    grid-row: 1 / span 4;
+  }
+  .why-pipe-step.is-ai {
+    padding-left: 0.6rem;
+    border-left: 1px solid var(--w-rule);
+  }
+}
+
+@media (max-width: 720px) {
+  .why-readout,
+  .why-loop {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .why-range-grid {
+    --label-w: 7.2rem;
+  }
+  .why-range-name {
+    font-size: 0.8rem;
+  }
+  .why-range-track {
+    margin-right: 0;
+  }
+  .why-range-val {
+    display: none;
+  }
+  .why-tl-grid {
+    --label-w: 100%;
+    --score-w: 0px;
+  }
+  .why-tl-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    row-gap: 0.2rem;
+  }
+  .why-tl-label {
+    grid-column: 1 / -1;
+  }
+  .why-tl-row .why-tl-cells {
+    grid-column: 1;
+  }
+  .why-tl-row .why-tl-score {
+    grid-column: 2;
+    min-width: 3.4rem;
+  }
+  .why-tl-ruler .why-tl-label {
+    display: none;
+  }
+  .why-tl-playhead {
+    display: none;
+  }
+  .why-tl-cell {
+    height: 1.35rem;
+  }
+  .why-tl-bar {
+    font-size: 0.66rem;
+  }
+  .why-tl-bar[data-minor]:not(.is-cur) {
+    color: transparent;
+  }
+  .why-stack-row {
+    grid-template-columns: 5.6rem minmax(0, 1fr) 2.2rem;
+  }
+  .why-app-src {
+    margin-left: 0;
+    text-align: left;
+    flex-basis: 100%;
+  }
+  .why-top-cta {
+    margin-left: 0;
+  }
+  .why-total-row {
+    grid-template-columns: 6.4rem minmax(0, 1fr) 2rem;
+  }
+}
+
+@media (max-width: 420px) {
+  .why {
+    font-size: 16px;
+  }
+  .why-big {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.4rem;
+  }
+}

@@ -21,6 +21,12 @@
      "planner": "ai"
     },
     {
+     "result_id": "osq-haydn-op76no3-ii-m0-20__church_brass__as_written",
+     "roster_id": "church_brass",
+     "roster_label": "Church brass: 2 trumpets (one beginner), horn, euphonium",
+     "planner": "as_written"
+    },
+    {
      "result_id": "osq-haydn-op76no3-ii-m0-20__church_brass__greedy",
      "roster_id": "church_brass",
      "roster_label": "Church brass: 2 trumpets (one beginner), horn, euphonium",
@@ -31,6 +37,12 @@
      "roster_id": "no_viola",
      "roster_label": "Quartet that lost its viola: 2 violins, cello, + a clarinet",
      "planner": "ai"
+    },
+    {
+     "result_id": "osq-haydn-op76no3-ii-m0-20__no_viola__as_written",
+     "roster_id": "no_viola",
+     "roster_label": "Quartet that lost its viola: 2 violins, cello, + a clarinet",
+     "planner": "as_written"
     },
     {
      "result_id": "osq-haydn-op76no3-ii-m0-20__no_viola__greedy",
@@ -45,6 +57,12 @@
      "planner": "ai"
     },
     {
+     "result_id": "osq-haydn-op76no3-ii-m0-20__sax_trio__as_written",
+     "roster_id": "sax_trio",
+     "roster_label": "Three saxes and nothing else",
+     "planner": "as_written"
+    },
+    {
      "result_id": "osq-haydn-op76no3-ii-m0-20__sax_trio__greedy",
      "roster_id": "sax_trio",
      "roster_label": "Three saxes and nothing else",
@@ -55,6 +73,12 @@
      "roster_id": "winds4",
      "roster_label": "Flute, clarinet, alto sax, bassoon",
      "planner": "ai"
+    },
+    {
+     "result_id": "osq-haydn-op76no3-ii-m0-20__winds4__as_written",
+     "roster_id": "winds4",
+     "roster_label": "Flute, clarinet, alto sax, bassoon",
+     "planner": "as_written"
     },
     {
      "result_id": "osq-haydn-op76no3-ii-m0-20__winds4__greedy",
@@ -85,6 +109,12 @@
      "planner": "ai"
     },
     {
+     "result_id": "osq-haydn-op76no3-ii-m40-60__church_brass__as_written",
+     "roster_id": "church_brass",
+     "roster_label": "Church brass: 2 trumpets (one beginner), horn, euphonium",
+     "planner": "as_written"
+    },
+    {
      "result_id": "osq-haydn-op76no3-ii-m40-60__church_brass__greedy",
      "roster_id": "church_brass",
      "roster_label": "Church brass: 2 trumpets (one beginner), horn, euphonium",
@@ -95,6 +125,12 @@
      "roster_id": "no_viola",
      "roster_label": "Quartet that lost its viola: 2 violins, cello, + a clarinet",
      "planner": "ai"
+    },
+    {
+     "result_id": "osq-haydn-op76no3-ii-m40-60__no_viola__as_written",
+     "roster_id": "no_viola",
+     "roster_label": "Quartet that lost its viola: 2 violins, cello, + a clarinet",
+     "planner": "as_written"
     },
     {
      "result_id": "osq-haydn-op76no3-ii-m40-60__no_viola__greedy",
@@ -109,6 +145,12 @@
      "planner": "ai"
     },
     {
+     "result_id": "osq-haydn-op76no3-ii-m40-60__sax_trio__as_written",
+     "roster_id": "sax_trio",
+     "roster_label": "Three saxes and nothing else",
+     "planner": "as_written"
+    },
+    {
      "result_id": "osq-haydn-op76no3-ii-m40-60__sax_trio__greedy",
      "roster_id": "sax_trio",
      "roster_label": "Three saxes and nothing else",
@@ -119,6 +161,12 @@
      "roster_id": "winds4",
      "roster_label": "Flute, clarinet, alto sax, bassoon",
      "planner": "ai"
+    },
+    {
+     "result_id": "osq-haydn-op76no3-ii-m40-60__winds4__as_written",
+     "roster_id": "winds4",
+     "roster_label": "Flute, clarinet, alto sax, bassoon",
+     "planner": "as_written"
     },
     {
      "result_id": "osq-haydn-op76no3-ii-m40-60__winds4__greedy",
@@ -149,6 +197,12 @@
      "planner": "ai"
     },
     {
+     "result_id": "osq-dvorak-op96-ii-m1-18__church_brass__as_written",
+     "roster_id": "church_brass",
+     "roster_label": "Church brass: 2 trumpets (one beginner), horn, euphonium",
+     "planner": "as_written"
+    },
+    {
      "result_id": "osq-dvorak-op96-ii-m1-18__church_brass__greedy",
      "roster_id": "church_brass",
      "roster_label": "Church brass: 2 trumpets (one beginner), horn, euphonium",
@@ -159,6 +213,12 @@
      "roster_id": "no_viola",
      "roster_label": "Quartet that lost its viola: 2 violins, cello, + a clarinet",
      "planner": "ai"
+    },
+    {
+     "result_id": "osq-dvorak-op96-ii-m1-18__no_viola__as_written",
+     "roster_id": "no_viola",
+     "roster_label": "Quartet that lost its viola: 2 violins, cello, + a clarinet",
+     "planner": "as_written"
     },
     {
      "result_id": "osq-dvorak-op96-ii-m1-18__no_viola__greedy",
@@ -173,6 +233,12 @@
      "planner": "ai"
     },
     {
+     "result_id": "osq-dvorak-op96-ii-m1-18__sax_trio__as_written",
+     "roster_id": "sax_trio",
+     "roster_label": "Three saxes and nothing else",
+     "planner": "as_written"
+    },
+    {
      "result_id": "osq-dvorak-op96-ii-m1-18__sax_trio__greedy",
      "roster_id": "sax_trio",
      "roster_label": "Three saxes and nothing else",
@@ -183,6 +249,12 @@
      "roster_id": "winds4",
      "roster_label": "Flute, clarinet, alto sax, bassoon",
      "planner": "ai"
+    },
+    {
+     "result_id": "osq-dvorak-op96-ii-m1-18__winds4__as_written",
+     "roster_id": "winds4",
+     "roster_label": "Flute, clarinet, alto sax, bassoon",
+     "planner": "as_written"
     },
     {
      "result_id": "osq-dvorak-op96-ii-m1-18__winds4__greedy",
@@ -213,6 +285,12 @@
      "planner": "ai"
     },
     {
+     "result_id": "osq-dvorak-op96-i-m1-20__church_brass__as_written",
+     "roster_id": "church_brass",
+     "roster_label": "Church brass: 2 trumpets (one beginner), horn, euphonium",
+     "planner": "as_written"
+    },
+    {
      "result_id": "osq-dvorak-op96-i-m1-20__church_brass__greedy",
      "roster_id": "church_brass",
      "roster_label": "Church brass: 2 trumpets (one beginner), horn, euphonium",
@@ -223,6 +301,12 @@
      "roster_id": "no_viola",
      "roster_label": "Quartet that lost its viola: 2 violins, cello, + a clarinet",
      "planner": "ai"
+    },
+    {
+     "result_id": "osq-dvorak-op96-i-m1-20__no_viola__as_written",
+     "roster_id": "no_viola",
+     "roster_label": "Quartet that lost its viola: 2 violins, cello, + a clarinet",
+     "planner": "as_written"
     },
     {
      "result_id": "osq-dvorak-op96-i-m1-20__no_viola__greedy",
@@ -237,6 +321,12 @@
      "planner": "ai"
     },
     {
+     "result_id": "osq-dvorak-op96-i-m1-20__sax_trio__as_written",
+     "roster_id": "sax_trio",
+     "roster_label": "Three saxes and nothing else",
+     "planner": "as_written"
+    },
+    {
      "result_id": "osq-dvorak-op96-i-m1-20__sax_trio__greedy",
      "roster_id": "sax_trio",
      "roster_label": "Three saxes and nothing else",
@@ -247,6 +337,12 @@
      "roster_id": "winds4",
      "roster_label": "Flute, clarinet, alto sax, bassoon",
      "planner": "ai"
+    },
+    {
+     "result_id": "osq-dvorak-op96-i-m1-20__winds4__as_written",
+     "roster_id": "winds4",
+     "roster_label": "Flute, clarinet, alto sax, bassoon",
+     "planner": "as_written"
     },
     {
      "result_id": "osq-dvorak-op96-i-m1-20__winds4__greedy",
@@ -277,6 +373,12 @@
      "planner": "ai"
     },
     {
+     "result_id": "osq-haydn-op20no2-i-m0-14__church_brass__as_written",
+     "roster_id": "church_brass",
+     "roster_label": "Church brass: 2 trumpets (one beginner), horn, euphonium",
+     "planner": "as_written"
+    },
+    {
      "result_id": "osq-haydn-op20no2-i-m0-14__church_brass__greedy",
      "roster_id": "church_brass",
      "roster_label": "Church brass: 2 trumpets (one beginner), horn, euphonium",
@@ -287,6 +389,12 @@
      "roster_id": "no_viola",
      "roster_label": "Quartet that lost its viola: 2 violins, cello, + a clarinet",
      "planner": "ai"
+    },
+    {
+     "result_id": "osq-haydn-op20no2-i-m0-14__no_viola__as_written",
+     "roster_id": "no_viola",
+     "roster_label": "Quartet that lost its viola: 2 violins, cello, + a clarinet",
+     "planner": "as_written"
     },
     {
      "result_id": "osq-haydn-op20no2-i-m0-14__no_viola__greedy",
@@ -301,6 +409,12 @@
      "planner": "ai"
     },
     {
+     "result_id": "osq-haydn-op20no2-i-m0-14__sax_trio__as_written",
+     "roster_id": "sax_trio",
+     "roster_label": "Three saxes and nothing else",
+     "planner": "as_written"
+    },
+    {
      "result_id": "osq-haydn-op20no2-i-m0-14__sax_trio__greedy",
      "roster_id": "sax_trio",
      "roster_label": "Three saxes and nothing else",
@@ -311,6 +425,12 @@
      "roster_id": "winds4",
      "roster_label": "Flute, clarinet, alto sax, bassoon",
      "planner": "ai"
+    },
+    {
+     "result_id": "osq-haydn-op20no2-i-m0-14__winds4__as_written",
+     "roster_id": "winds4",
+     "roster_label": "Flute, clarinet, alto sax, bassoon",
+     "planner": "as_written"
     },
     {
      "result_id": "osq-haydn-op20no2-i-m0-14__winds4__greedy",
@@ -341,6 +461,12 @@
      "planner": "ai"
     },
     {
+     "result_id": "osq-hensel-eflat-iii-m1-16__church_brass__as_written",
+     "roster_id": "church_brass",
+     "roster_label": "Church brass: 2 trumpets (one beginner), horn, euphonium",
+     "planner": "as_written"
+    },
+    {
      "result_id": "osq-hensel-eflat-iii-m1-16__church_brass__greedy",
      "roster_id": "church_brass",
      "roster_label": "Church brass: 2 trumpets (one beginner), horn, euphonium",
@@ -351,6 +477,12 @@
      "roster_id": "no_viola",
      "roster_label": "Quartet that lost its viola: 2 violins, cello, + a clarinet",
      "planner": "ai"
+    },
+    {
+     "result_id": "osq-hensel-eflat-iii-m1-16__no_viola__as_written",
+     "roster_id": "no_viola",
+     "roster_label": "Quartet that lost its viola: 2 violins, cello, + a clarinet",
+     "planner": "as_written"
     },
     {
      "result_id": "osq-hensel-eflat-iii-m1-16__no_viola__greedy",
@@ -365,6 +497,12 @@
      "planner": "ai"
     },
     {
+     "result_id": "osq-hensel-eflat-iii-m1-16__sax_trio__as_written",
+     "roster_id": "sax_trio",
+     "roster_label": "Three saxes and nothing else",
+     "planner": "as_written"
+    },
+    {
      "result_id": "osq-hensel-eflat-iii-m1-16__sax_trio__greedy",
      "roster_id": "sax_trio",
      "roster_label": "Three saxes and nothing else",
@@ -375,6 +513,12 @@
      "roster_id": "winds4",
      "roster_label": "Flute, clarinet, alto sax, bassoon",
      "planner": "ai"
+    },
+    {
+     "result_id": "osq-hensel-eflat-iii-m1-16__winds4__as_written",
+     "roster_id": "winds4",
+     "roster_label": "Flute, clarinet, alto sax, bassoon",
+     "planner": "as_written"
     },
     {
      "result_id": "osq-hensel-eflat-iii-m1-16__winds4__greedy",

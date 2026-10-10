@@ -1,0 +1,13 @@
+# Not needed by the Vite build (web/) or the Python function (api/, engine/coverpart, corpus/).
+/.venv
+/notes-local
+/out
+**/node_modules
+/web/dist
+/web/screenshots
+/engine/tests/fixtures
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+.DS_Store
+.env*

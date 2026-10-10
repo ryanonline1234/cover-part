@@ -2,6 +2,12 @@
    Paper ground, engraved ink, hairlines like staff lines. The only saturated colors on the
    page are the per-line colors from the result, so color always means "this line of the original". */
 
+@font-face {
+  font-family: "Accidentals";
+  src: local("Apple Symbols"), local("Segoe UI Symbol"), local("Noto Music"), local("DejaVu Serif");
+  unicode-range: U+266D-266F;
+}
+
 :root {
   --ground: #f1ecdf; /* desk paper */
   --sheet: #fcfaf4; /* engraving paper the score sits on */
@@ -11,8 +17,9 @@
   --rule: #cfc6b4;
   --rule-soft: #e2dbcb;
 
-  --display: "Fraunces", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
-  --text: "Source Serif 4", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  /* "Accidentals" only covers ♭ ♮ ♯ (Fraunces and Source Serif have none, and the default fallback is wide). */
+  --display: "Accidentals", "Fraunces", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  --text: "Accidentals", "Source Serif 4", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
 
   --gutter: clamp(16px, 4vw, 44px);
   --measure: 64ch;
@@ -81,103 +88,71 @@ select {
   display: none !important;
 }
 
-.page {
+/* ---------- site header (both pages) ---------- */
+
+.site-header,
+.colophon {
   max-width: 1180px;
-  margin: 0 auto;
-  padding: 0 var(--gutter) 3rem;
+  margin-inline: auto;
+  padding-inline: var(--gutter);
 }
 
-/* ---------- masthead ---------- */
-
-.masthead {
+.site-header {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: 0.25rem 2rem;
-  padding: 1.4rem 0 1.1rem;
+  gap: 0.2rem 1.4rem;
+  padding-top: 1.1rem;
+  padding-bottom: 0.85rem;
   border-bottom: 1px solid var(--rule);
+  background-clip: content-box;
 }
 
 .wordmark {
   font-family: var(--display);
   font-style: italic;
   font-weight: 620;
-  font-size: 1.3rem;
+  font-size: 1.35rem;
   font-variation-settings: "opsz" 48, "SOFT" 40, "WONK" 1;
   letter-spacing: -0.005em;
+  text-decoration: none;
 }
 
-.tagline {
+.site-tagline {
   color: var(--ink-2);
   font-size: 0.94rem;
-  max-width: 70ch;
 }
 
-/* ---------- title page ---------- */
-
-.titlepage {
-  display: grid;
-  grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr);
-  gap: 2rem 4rem;
-  align-items: end;
-  padding-top: clamp(2.2rem, 6vw, 4.5rem);
+.site-nav {
+  display: flex;
+  gap: 1.4rem;
+  margin-left: auto;
 }
 
-.work-title {
-  margin: 0;
+.site-nav a {
+  padding: 0.2rem 0;
   font-family: var(--display);
-  font-weight: 360;
-  font-size: clamp(2.35rem, 5.6vw, 4.6rem);
-  line-height: 1.02;
-  letter-spacing: -0.018em;
-  font-variation-settings: "opsz" 144, "SOFT" 20, "WONK" 0;
-  text-wrap: balance;
-}
-
-.work-catalog {
-  display: block;
-  margin-top: 0.45rem;
-  font-size: clamp(1.2rem, 2.1vw, 1.65rem);
-  font-weight: 380;
-  letter-spacing: 0;
-  line-height: 1.2;
-  font-variation-settings: "opsz" 36, "SOFT" 20;
-}
-
-.work-title--empty {
-  color: var(--ink-3);
-}
-
-.work-meta {
-  margin-top: 1rem;
-  font-family: var(--display);
-  font-size: clamp(1.1rem, 1.8vw, 1.35rem);
-  font-weight: 400;
+  font-size: 1.05rem;
   font-variation-settings: "opsz" 24;
-}
-
-.work-meta i {
-  font-style: italic;
-}
-
-.work-why {
-  margin-top: 0.9rem;
-  max-width: 58ch;
-  font-style: italic;
+  text-decoration: none;
   color: var(--ink-2);
-  font-size: 1rem;
+  border-bottom: 1px solid transparent;
 }
 
-.work-source {
-  margin-top: 0.35rem;
-  color: var(--ink-3);
-  font-size: 0.9rem;
+.site-nav a:hover {
+  color: var(--ink);
+  border-bottom-color: var(--rule);
 }
 
-.controls {
-  display: grid;
-  gap: 1.1rem;
-  padding-bottom: 0.2rem;
+.site-nav a[aria-current="page"] {
+  color: var(--ink);
+  border-bottom: 2px solid var(--ink);
+}
+
+@media (max-width: 560px) {
+  .site-tagline {
+    display: none;
+  }
 }
 
 .field {
@@ -1074,12 +1049,7 @@ select {
   color: var(--ink-3);
 }
 
-/* ---------- masthead link, live notice, buttons ---------- */
-
-.masthead-link {
-  margin-left: auto;
-  font-size: 0.94rem;
-}
+/* ---------- notices, buttons ---------- */
 
 .notice--live {
   border-left-color: var(--ink);
@@ -1373,21 +1343,22 @@ select {
 .colophon {
   margin-top: 5rem;
   padding-top: 1rem;
-  border-top: 1px solid var(--rule);
+  padding-bottom: 2.5rem;
   font-size: 0.84rem;
   color: var(--ink-3);
+}
+
+.colophon p {
   max-width: 80ch;
+  padding-top: 1rem;
+  border-top: 1px solid var(--rule);
 }
 
 /* ---------- narrow screens ---------- */
 
 @media (max-width: 860px) {
-  .titlepage,
   .checks {
     grid-template-columns: minmax(0, 1fr);
-  }
-  .titlepage {
-    gap: 1.6rem;
   }
 }
 

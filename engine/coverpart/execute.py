@@ -255,6 +255,45 @@ def fold_out_of_range(exe: Execution, roster: Roster) -> None:
                                                     p.nameWithOctave, -1))
 
 
+def split_like_engraving(exe: Execution, roster: Roster) -> None:
+    """MusicXML export completes tuplets by splitting a note into tied notes (the fingered
+    tremolo in Dvořák op. 96/I, bar 1). Make that split before counting, so that the notes the
+    checker counts are the notes the engraving shows; then recount notes and violations."""
+    owner = {(v.player, v.measure): v.assignment for v in exe.violations}
+    for part in exe.parts.values():
+        makeNotation.splitElementsToCompleteTuplets(part, recurse=True, addTies=True)
+        respell(part)
+    exe.notes_total = 0
+    exe.violations = []
+    for pid, part in exe.parts.items():
+        player = roster.player(pid)
+        for n in part.recurse().notes:
+            mnum = n.getContextByClass(stream.Measure).number
+            for p in n.pitches:
+                exe.notes_total += 1
+                if not player.fits(p):
+                    exe.violations.append(Violation(pid, mnum, p.nameWithOctave, owner.get((pid, mnum), -1)))
+
+
+def mark_out_of_range(exe: Execution, roster: Roster) -> int:
+    """Give every note a player can't reach an x notehead (only the out-of-range pitches of a
+    kept chord). The note keeps its line color. Used when no repair is applied ("as written"), so
+    the engraving shows exactly which notes are unplayable. Returns how many notes were marked."""
+    marked = 0
+    for pid, part in exe.parts.items():
+        player = roster.player(pid)
+        for n in part.recurse().notes:
+            if isinstance(n, chord.Chord):
+                for comp in n.notes:
+                    if not player.fits(comp.pitch):
+                        comp.notehead = "x"
+                        marked += 1
+            elif not player.fits(n.pitch):
+                n.notehead = "x"
+                marked += 1
+    return marked
+
+
 def _assignment_pitches(a: dict, ex: Excerpt, lo: int, hi: int) -> list[float]:
     out = []
     for num in range(lo, hi + 1):

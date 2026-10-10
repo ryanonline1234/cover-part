@@ -1,6 +1,6 @@
 """Batch-generate demo results for the web app.
 
-  python -m coverpart.cli build --manifest ../corpus/manifest.json --out ../web/public/demos [--planners greedy ai]
+  python -m coverpart.cli build --manifest ../corpus/manifest.json --out ../web/public/demos [--planners greedy ai as_written]
   python -m coverpart.cli one --excerpt <id> --roster winds4 --planner ai
 """
 
@@ -56,6 +56,13 @@ def recheck_one(f: Path, manifest: dict, manifest_dir: Path) -> tuple[str, str]:
     piece_id, roster_id, planner = f.stem.split("__")
     e = next(x for x in manifest["excerpts"] if x["id"] == piece_id)
     ex = load_excerpt(manifest_dir / e["file"], e["start_measure"], e["end_measure"], meta=e)
+    if planner == "as_written":  # deterministic and repair-free: rebuild it, never re-execute it as "fixed"
+        res = arrange(ex, PRESETS[roster_id], "as_written", piece=piece_meta(e), log=lambda m: None)
+        res["result_id"] = f.stem
+        res["log"] = ["rechecked: rebuilt with the current engine"]
+        res["elapsed_s"] = old.get("elapsed_s")
+        f.write_text(json.dumps(res))
+        return f.stem, f"as_written rebuilt: {res['checks']['notes_out_of_range']} out of range"
     res = arrange(ex, PRESETS[roster_id], "fixed", piece=piece_meta(e), fixed_plan=old["plan"],
                   model=old.get("model"), log=lambda m: None)
     res["planner"] = planner

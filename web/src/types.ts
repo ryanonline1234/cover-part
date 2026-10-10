@@ -2,6 +2,9 @@
 // Optional (`?`) marks fields the UI tolerates being absent; everything else is required.
 
 export type Planner = "ai" | "greedy";
+/** Every planner a result file can name. "as_written" results are why-page demo data (one player per
+ *  source line, no plan); the arranging tool ignores them. */
+export type ResultPlanner = Planner | "as_written";
 
 export interface Piece {
   id: string;
@@ -178,7 +181,7 @@ export interface ArrangeResult {
   piece: Piece;
   source_parts: SourcePart[];
   roster: Roster;
-  planner: Planner;
+  planner: ResultPlanner;
   model: string | null;
   plan: {
     summary: string;
@@ -194,13 +197,16 @@ export interface ArrangeResult {
     parts: Record<string, string>;
   };
   midi: { original: string; arranged: string };
+  /** Present on live results (engine log lines) and some precomputed ones. */
+  log?: string[];
+  elapsed_s?: number;
 }
 
 export interface ResultRef {
   result_id: string;
   roster_id: string;
   roster_label: string;
-  planner: Planner;
+  planner: ResultPlanner;
 }
 
 export interface IndexPiece extends Piece {
