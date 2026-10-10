@@ -359,8 +359,8 @@ export default function App() {
 
       <footer className="colophon">
         <p>
-          Built for EvoHacks 2026. Scores engraved in the browser with Verovio; playback uses the FluidR3 General MIDI
-          soundfont. Source excerpts are public domain (CC0).
+          Built for EvoHacks 2026. Scores engraved in the browser with Verovio; playback uses the FluidR3_GM General MIDI
+          soundfont (CC BY 3.0, via gleitz/midi-js-soundfonts). Source excerpts are public domain (CC0, OpenScore String Quartets).
         </p>
       </footer>
     </div>

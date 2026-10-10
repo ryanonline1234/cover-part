@@ -59,7 +59,7 @@ export function steadyRole(result: ArrangeResult, sourcePart: string): string | 
   return roles.size === 1 ? [...roles][0] : null;
 }
 
-export const PLANNER_LABEL = { ai: "AI plan", greedy: "Naive baseline" } as const;
+export const PLANNER_LABEL = { ai: "AI plan", greedy: "Rule-based baseline" } as const;
 
 export function downloadText(filename: string, text: string, mime = "application/vnd.recordare.musicxml+xml") {
   const blob = new Blob([text], { type: mime });

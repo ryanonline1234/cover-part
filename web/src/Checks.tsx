@@ -74,7 +74,7 @@ function loopSteps(r: ArrangeResult): Step[] {
   steps.push(
     ai
       ? { name: "AI plan", text: `First draft${r.model ? ` from ${r.model}` : ""}: who covers each line, bar by bar.` }
-      : { name: "Baseline rule", text: "Top line to the highest player, next line to the next, no musical judgment and no AI." },
+      : { name: "Baseline rule", text: "No AI: fixed rules call the highest line the melody and the lowest the bass, rank the rest by activity, and give each line to the free player whose range fits it best." },
   );
 
   // Successful structure revisions aren't listed; they're the rounds no list entry accounts for.
@@ -222,7 +222,7 @@ const ROWS: Row[] = [
   },
   {
     label: "Reference melody kept",
-    def: "Share of the melody bars, marked by hand before any plan existed, that some player actually plays.",
+    def: "Share of the reference melody bars (mapped from the notes by an AI agent before any plan existed) that some player actually plays.",
     value: (r) => (r.checks.essential_coverage.melody === null ? "no map" : pct(r.checks.essential_coverage.melody)),
   },
   {

@@ -13,7 +13,7 @@ export function Plan({ result }: { result: ArrangeResult }) {
         <p className="plan-by">
           {result.planner === "ai"
             ? `Planned by ${result.model ?? "an AI model"}. Transposition, range checks and repair are plain code.`
-            : "No AI here: a fixed rule hands the top line to the highest player, and so on down."}
+            : "No AI here: fixed rules call the highest line the melody and the lowest the bass, rank the rest by activity, and give each line to the free player whose range fits it best (with octave shifts)."}
         </p>
       </div>
 

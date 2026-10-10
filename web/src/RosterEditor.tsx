@@ -142,7 +142,7 @@ export function RosterEditor({ pieceId, seed, planner, onResult }: Props) {
   return (
     <div className="live">
       <p className="block-lede">
-        Change the players, then re-score with {planner === "ai" ? "the AI plan" : "the naive baseline"} (switch it
+        Change the players, then re-score with {planner === "ai" ? "the AI plan" : "the rule-based baseline"} (switch it
         above). This runs the engine on this machine; nothing is saved.
       </p>
       <ol className="live-players">

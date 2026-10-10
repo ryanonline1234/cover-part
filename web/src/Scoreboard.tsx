@@ -67,7 +67,7 @@ export function Scoreboard({ data, index, current, onPick }: Props) {
   return (
     <div className="scoreboard">
       <p className="block-lede">
-        Every piece with every set of players, {data.n_pairs} pairs in all, AI plan against the naive baseline. Counts are
+        Every piece with every set of players, {data.n_pairs} pairs in all, AI plan against the rule-based baseline. Counts are
         how many pairs each side did better on; a tie means equal numbers.
         {ahead.ai.length > 0 && ` The AI plan does better more often on ${listing(ahead.ai)}.`}
         {ahead.base.length > 0 && ` The baseline does better more often on ${listing(ahead.base)}.`}

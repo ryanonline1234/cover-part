@@ -1,12 +1,12 @@
 # Cover Part
 
-**Re-score a piece for the players you actually have.** Upload a score and your roster ("no horns, one bassoon, three altos, the second trumpet is a beginner"). An AI arranger decides which lines carry the piece and who covers each one; plain code transposes every part and checks every note against every player's range before anything prints.
+**Re-score a piece for the players you actually have.** The demo site uses six public-domain string-quartet excerpts with precomputed results; the engine takes any MusicXML. Give it a score (MusicXML) and your roster ("no horns, one bassoon, three altos, the second trumpet is a beginner"). An AI arranger decides which lines carry the piece and who covers each one; plain code transposes every part and checks every note against every player's range before anything prints.
 
 Built in 27 hours for [EvoHacks 2026](https://evohackathon2026.devpost.com) (theme: AI for Automation).
 
 ## The problem
 
-Small school, church, camp and community ensembles rarely have the instruments a published arrangement assumes. Today the director rewrites parts by hand in notation software: deciding what matters, who covers it, transposing for B♭ and E♭ instruments, and checking that nobody is asked for a note they can't play. That takes hours per piece, every concert cycle.
+Small school, church, camp and community ensembles rarely have the instruments a published arrangement assumes. Today the director rewrites parts by hand in notation software: deciding what matters, who covers it, transposing for B♭ and E♭ instruments, and checking that nobody is asked for a note they can't play. It is slow, fiddly work that comes back every time the roster or the music changes.
 
 ## How it works
 
@@ -17,7 +17,7 @@ MusicXML ──► music21 summarizes each line, 4 bars at a time ──► Clau
 ```
 
 1. **Read.** music21 cuts the excerpt and summarizes every source line phrase by phrase: range, rhythmic activity, stepwise motion, repeated notes, which lines double which, and the opening notes. The model never reads raw notation.
-2. **Plan (the AI part).** Claude (`claude-opus-5-5`) finds the melody *from the music*, not from which line is on top: in Haydn's Emperor Variation II the tune is in the cello under a busy violin. It decides what to keep and what to drop when there are fewer players than lines, who covers each line based on register and idiom, and where a hand-off should happen. It returns a JSON plan with a reason for every decision.
+2. **Plan (the AI part).** Claude (`claude-opus-5-5`) finds the melody *from the music*, not from which line is on top: in the Dvořák "American" Lento the theme passes from the first violin to the cello at bar 11, and the AI follows it. It can also get this wrong (see the results below). It decides what to keep and what to drop when there are fewer players than lines, who covers each line based on register and idiom, and where a hand-off should happen. It returns a JSON plan with a reason for every decision.
 3. **Check (plain code).** The plan is never trusted:
    - **Structure:** every player plays at most one line at a time, and every sounding bar is either covered or explicitly dropped. Problems go back to the model for revision; anything left is auto-fixed by dropping, never by inventing music.
    - **Range:** every note of every part is checked against that player's sounding range for their level, and violations go back to the model. Whole phrases are then moved by octaves, and single-note octave folds are a counted last resort. Zero unplayable notes is guaranteed by construction; the honest quality numbers are *notes out of range before repair* and *notes folded*.
