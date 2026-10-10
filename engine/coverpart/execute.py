@@ -209,40 +209,73 @@ def fold_out_of_range(exe: Execution, roster: Roster) -> None:
                                                     p.nameWithOctave, -1))
 
 
-def best_octave_repair(plan: dict, ex: Excerpt, roster: Roster) -> tuple[dict, int]:
-    """For each assignment with out-of-range notes, try whole-phrase octave shifts. Returns the
-    repaired plan and how many assignments changed."""
+def _assignment_pitches(a: dict, ex: Excerpt, lo: int, hi: int) -> list[float]:
+    out = []
+    for num in range(lo, hi + 1):
+        src = _src_measure(ex, a["source_part"], num)
+        if src is None:
+            continue
+        for n in src.recurse().notes:
+            ps = sorted(p.ps for p in n.pitches)
+            if a.get("chord_policy") == "bottom":
+                ps = ps[:1]
+            elif a.get("chord_policy") != "keep":
+                ps = ps[-1:]
+            out.extend(ps)
+    return out
+
+
+def best_octave_repair(plan: dict, ex: Excerpt, roster: Roster, seg_len: int = 4) -> tuple[dict, int]:
+    """For each assignment with out-of-range notes, try whole-octave shifts: first for the whole
+    assignment, then phrase by phrase (seg_len bars), which is what an arranger does for a player with a
+    narrow range. Returns the repaired plan and how many assignments changed."""
     plan = copy.deepcopy(plan)
     changed = 0
-    for i, a in enumerate(plan["assignments"]):
+    bounds = segments(ex, seg_len)
+    out_assignments = []
+    for a in plan["assignments"]:
         player = roster.player(a["player"])
-        lo, hi = player.range_sounding
-        pitches = []
-        for num in range(a["start_measure"], a["end_measure"] + 1):
-            src = _src_measure(ex, a["source_part"], num)
-            if src is None:
-                continue
-            for n in src.recurse().notes:
-                ps = sorted(p.ps for p in n.pitches)
-                if a.get("chord_policy") == "bottom":
-                    ps = ps[:1]
-                elif a.get("chord_policy") != "keep":
-                    ps = ps[-1:]
-                pitches.extend(ps)
-        if not pitches:
-            continue
+        lo_ps, hi_ps = (p.ps for p in player.range_sounding)
 
-        def misses(shift: int) -> int:
-            return sum(1 for ps in pitches if not lo.ps <= ps + 12 * shift <= hi.ps)
+        def misses(pitches, shift):
+            return sum(1 for ps in pitches if not lo_ps <= ps + 12 * shift <= hi_ps)
 
         cur = int(a.get("octave_shift", 0))
-        if misses(cur) == 0:
+        allp = _assignment_pitches(a, ex, a["start_measure"], a["end_measure"])
+        if not allp or misses(allp, cur) == 0:
+            out_assignments.append(a)
             continue
-        best = min(range(-3, 4), key=lambda s: (misses(s), abs(s - cur)))
-        if misses(best) < misses(cur):
-            a["octave_shift"] = best
-            a["reason"] = a.get("reason", "") + f" [checker moved this phrase {best - cur:+d} octave(s) to fit the range]"
+        best = min(range(-3, 4), key=lambda s: (misses(allp, s), abs(s - cur)))
+        if misses(allp, best) == 0:
+            a = dict(a, octave_shift=best,
+                     reason=a.get("reason", "") + f" [checker moved this line {best - cur:+d} octave(s) to fit the range]")
+            out_assignments.append(a)
             changed += 1
+            continue
+        # phrase by phrase
+        chunks = []
+        for blo, bhi in bounds:
+            lo, hi = max(blo, a["start_measure"]), min(bhi, a["end_measure"])
+            if lo > hi:
+                continue
+            ps = _assignment_pitches(a, ex, lo, hi)
+            prev = chunks[-1][2] if chunks else best
+            s_best = min(range(-3, 4), key=lambda s: (misses(ps, s), abs(s - prev), abs(s - cur))) if ps else prev
+            chunks.append([lo, hi, s_best])
+        merged = []
+        for lo, hi, sh in chunks:
+            if merged and merged[-1][2] == sh and merged[-1][1] + 1 == lo:
+                merged[-1][1] = hi
+            else:
+                merged.append([lo, hi, sh])
+        if sum(misses(_assignment_pitches(a, ex, lo, hi), sh) for lo, hi, sh in merged) < misses(allp, best):
+            for lo, hi, sh in merged:
+                out_assignments.append(dict(a, start_measure=lo, end_measure=hi, octave_shift=sh,
+                                            reason=a.get("reason", "") + f" [checker: mm. {lo}-{hi} at {sh:+d} octave(s) to fit the range]"))
+        else:
+            out_assignments.append(dict(a, octave_shift=best))
+        changed += 1
+    plan["assignments"] = out_assignments
     return plan, changed
 
 

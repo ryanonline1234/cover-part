@@ -136,25 +136,47 @@ def arrange(ex: Excerpt, roster: Roster, planner: str = "greedy", piece: dict | 
 
     exe = ex_mod.execute(plan, ex, roster)
     before = len(exe.violations)
+    revision_log: list[dict] = []
+
+    def badness(p, e):
+        v = ex_mod.voicing_issues(p, e, ex, roster)
+        return {"out_of_range": len(e.violations),
+                "under_bass": sum(x["events"] for x in v if x["kind"] == "below_bass"),
+                "bass_missing_bars": sum(1 for x in v if x["kind"] == "bass_missing")}, v
+
+    def try_revision(kind, problems):
+        """The checker has the last word: a revision is kept only if it is structurally valid and
+        makes no measured problem worse."""
+        nonlocal plan, exe, revisions
+        revised = session.revise(plan, problems, kind=kind)
+        revisions += 1
+        errs = validate(revised, ex, roster).errors + role_problems(revised, ex)
+        old, _ = badness(plan, exe)
+        if errs:
+            revision_log.append({"kind": kind, "kept": False, "why": f"{len(errs)} structural/role problem(s)",
+                                 "before": old, "after": None})
+            log(f"  {kind} revision rejected: {errs[:2]}")
+            return
+        new_exe = ex_mod.execute(revised, ex, roster)
+        new, _ = badness(revised, new_exe)
+        worse = [k for k in old if new[k] > old[k]]
+        kept = not worse
+        revision_log.append({"kind": kind, "kept": kept, "before": old, "after": new,
+                             "why": "no measured problem got worse" if kept else f"made {', '.join(worse)} worse"})
+        log(f"  {kind} revision {'kept' if kept else 'rejected'}: {old} -> {new}")
+        if kept:
+            plan, exe = revised, new_exe
+
     if before and planner == "ai":
         log(f"  {before} note(s) out of range; asking the planner to revise")
-        viol = [v.to_json(roster) for v in exe.violations]
-        revised = session.revise(plan, viol, kind="range")
-        revisions += 1
-        if validate(revised, ex, roster).ok:
-            plan = revised
-            exe = ex_mod.execute(plan, ex, roster)
-    voicing_before = ex_mod.voicing_issues(plan, exe, ex, roster)
+        try_revision("range", [v.to_json(roster) for v in exe.violations])
+    _, voicing_before = badness(plan, exe)
     if planner == "ai" and any(v["kind"] == "bass_missing" or v["max_semitones"] >= 3 for v in voicing_before):
         log(f"  {len(voicing_before)} voicing problem(s); asking the planner to revise")
-        revised = session.revise(plan, voicing_before, kind="voicing")
-        revisions += 1
-        if validate(revised, ex, roster).ok:
-            plan = revised
-            exe = ex_mod.execute(plan, ex, roster)
+        try_revision("voicing", voicing_before)
     after_ai = len(exe.violations)
     if exe.violations:
-        plan, changed = ex_mod.best_octave_repair(plan, ex, roster)
+        plan, changed = ex_mod.best_octave_repair(plan, ex, roster, seg_len)
         if changed:
             exe = ex_mod.execute(plan, ex, roster)
     after_octave = len(exe.violations)
@@ -176,6 +198,7 @@ def arrange(ex: Excerpt, roster: Roster, planner: str = "greedy", piece: dict | 
         "notes_folded": exe.notes_folded,
         "chords_reduced": exe.chords_reduced,
         "repair_rounds": revisions,
+        "revisions": revision_log,
         "essential_coverage": {
             "melody": melody_coverage(plan, ex, piece.get("melody_map", [])),
             "bass": bass_preserved(orig, sc),

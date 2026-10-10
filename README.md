@@ -48,5 +48,6 @@ Excerpts come from the [OpenScore String Quartets](https://github.com/OpenScore/
 ## Limits (honest)
 
 - Instrument ranges are typical school-level ranges, not hard limits, and each player can override them.
+- Wind players play one note at a time, so string double stops are reduced to one note. Where a double stop's lower note was the lowest sound, the harmonic bass changes briefly (a one-to-one mapping of the Emperor theme preserves the bass 95% of the time, not 100%).
 - Slurs and string-specific marks (bowings, pizzicato) are not carried into wind parts. Measured tremolo plays back as written.
 - Musical quality can't be fully proven by code. The checker proves playability; whether the cover *sounds right* needs a musician's ear.
