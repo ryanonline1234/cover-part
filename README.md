@@ -57,7 +57,10 @@ What this does and doesn't show:
 
 ### Ryan's contributions
 
-_In progress during the hackathon. The arranger's musical rules (`engine/coverpart/arranger_rules.md`) are the first thing Ryan is taking over._
+_In progress during the hackathon._
+
+- Redirected the project from a report-style page to a practical tool. He chose the "band folder" layout (one printable part per player) from three options, asked for a page on the why behind it, and decided that custom bands run live while AI plans stay precomputed (no live API key).
+- Next: the arranger's musical rules (`engine/coverpart/arranger_rules.md`) and the why page's text.
 
 ## Run it
 
