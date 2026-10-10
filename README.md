@@ -29,7 +29,7 @@ MusicXML ──► music21 summarizes each line, 4 bars at a time ──► Clau
 
 The baseline is deliberately not a strawman. It treats the highest line as the melody and the lowest as the bass, ranks the rest by activity, and gives each line to the free player whose range fits best, with octave shifts. It keeps a line with the same player while that player still fits it, and any player left without a line doubles the melody or the bass. Custom bands on the site get this plan, live. Both planners go through the same checker and the same deterministic repairs. The AI additionally gets its revision loop: the checker sends back problems it can't repair, and a revision is kept only if it leaves fewer problems in total.
 
-Six CC0 excerpts × four rosters = 24 pairs (`python -m coverpart.report`, results in `web/public/demos/comparison.json`). For each pair the AI wrote 3 independent plans; each went through the same revision loop and repairs, and the checker kept the one with the fewest problems. It picked a plan other than the first in 0 of 24 pairs.
+Six CC0 excerpts × four rosters = 24 pairs (`python -m coverpart.report`, results in `web/public/demos/comparison.json`). For each pair the AI wrote 3 independent plans; each went through the same revision loop and repairs, and the checker kept the one with the fewest problems. It picked a plan other than the first in 11 of 24 pairs.
 
 | Metric | AI (best of 3) | Rule-based baseline | AI better / worse / tie |
 |---|---|---|---|
