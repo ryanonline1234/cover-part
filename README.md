@@ -46,6 +46,17 @@ What this does and doesn't show:
 - The AI **leaves out more music**: 59 of its 165 dropped bars are in the church-brass roster. There it rests the beginner trumpet on lines it can't play, while the baseline gives every line to someone and octave-folds the notes that don't fit. Every bar the AI drops is a line it labeled inner, accompaniment, countermelody or doubling, never melody or bass. Whether that's the right call is a director's judgment.
 - These are code-checkable properties. **Whether a cover sounds good needs a musician's ear**, and that hasn't been measured yet.
 
+## How this was built (AI use, stated plainly)
+
+- **Built with Claude Code.** During the hackathon window (Oct 10–11, 2026), Claude Code agents (Anthropic's AI coding agent, model Claude Opus 5.5) wrote the code, tests, web app and documentation, and chose the demo excerpts. That included a corpus-selection agent, a web-frontend agent, and a 19-agent adversarial review whose 13 confirmed bugs were then fixed. Every commit they made carries a `Co-Authored-By: Claude` trailer.
+- **Ryan's part:** he chose this project from a ranked list of ideas, directed the build, and makes the project's decisions (for example, publishing it and keeping the public site to precomputed results). What he writes or changes himself is listed under "Ryan's contributions" below, and in the git history as commits without the Claude trailer.
+- **Inside the product,** Claude Opus 5.5 is the arranger. The results on the site were precomputed by running it through the Claude Code CLI on Ryan's Claude subscription.
+- **Outside resources:** [music21](https://www.music21.org) (score analysis and export), [Verovio](https://www.verovio.org) (engraving in the browser), the [OpenScore String Quartets](https://github.com/OpenScore/StringQuartets) corpus (CC0), and the FluidR3_GM soundfont via [gleitz/midi-js-soundfonts](https://github.com/gleitz/midi-js-soundfonts) (CC BY 3.0).
+
+### Ryan's contributions
+
+_In progress during the hackathon. The arranger's musical rules (`engine/coverpart/arranger_rules.md`) are the first thing Ryan is taking over._
+
 ## Run it
 
 ```bash
