@@ -4,6 +4,10 @@ declare module "verovio/wasm" {
 }
 
 declare module "verovio/esm" {
+  export const LOG_OFF: number;
+  export const LOG_ERROR: number;
+  export const LOG_WARNING: number;
+  export function enableLog(level: number, module: unknown): void;
   export class VerovioToolkit {
     constructor(module: unknown);
     loadData(data: string): boolean;

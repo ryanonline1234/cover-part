@@ -10,6 +10,6 @@ export default defineConfig({
   },
   build: {
     // verovio's WASM toolkit is one ~7 MB lazily loaded chunk; that is expected.
-    chunkSizeWarningLimit: 8000,
+    chunkSizeWarningLimit: 9000,
   },
 });

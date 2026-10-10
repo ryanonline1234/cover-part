@@ -3,6 +3,7 @@
 // Samples: smplr Soundfont (gleitz midi-js-soundfonts, FluidR3_GM kit), one instrument
 // per General MIDI program found in the files.
 import { Midi } from "@tonejs/midi";
+import type { Bar } from "./music";
 import { Soundfont, getSoundfontNames } from "smplr";
 
 export type Side = "original" | "arranged";
@@ -19,10 +20,12 @@ export interface Track {
   events: NoteEv[];
   duration: number;
   programs: number[];
-  /** Seconds -> fractional measure offset from the excerpt's first bar (0 = downbeat of bar 1 of the file). */
+  /** Seconds -> fractional bar offset from the excerpt's first bar number (column index in the line map). */
   measureAt: (sec: number) => number;
   /** Fractional measure offset -> seconds. */
   timeAtMeasure: (m: number) => number;
+  /** Seconds -> quarter notes from the start (Verovio timemap's qstamp unit). */
+  quarterAt: (sec: number) => number;
 }
 
 // General MIDI program number -> gleitz soundfont name.
@@ -52,7 +55,7 @@ function decodeBase64(b64: string): Uint8Array {
   return out;
 }
 
-export function parseMidi(b64: string): Track {
+export function parseMidi(b64: string, bars: Bar[] = []): Track {
   const midi = new Midi(decodeBase64(b64));
   const events: NoteEv[] = [];
   const programs = new Set<number>();
@@ -66,32 +69,55 @@ export function parseMidi(b64: string): Track {
   }
   events.sort((a, b) => a.t - b.t);
 
-  // Measure map from time signatures (ticks). Assumes the file starts on a downbeat.
   const { ppq } = midi.header;
-  const sigs = (midi.header.timeSignatures.length
-    ? midi.header.timeSignatures
-    : [{ ticks: 0, timeSignature: [4, 4] }]
-  ).map((s) => ({ ticks: s.ticks, len: (ppq * 4 * s.timeSignature[0]) / s.timeSignature[1] }));
-  // cumulative measure count at each signature change
-  const starts: number[] = [];
-  let acc = 0;
-  for (let i = 0; i < sigs.length; i++) {
-    starts.push(acc);
-    if (i + 1 < sigs.length) acc += (sigs[i + 1].ticks - sigs[i].ticks) / sigs[i].len;
+  const quarterAt = (sec: number) => midi.header.secondsToTicks(Math.max(0, sec)) / ppq;
+  const secAtQuarter = (q: number) => midi.header.ticksToSeconds(Math.max(0, q) * ppq);
+
+  let measureAt: (sec: number) => number;
+  let timeAtMeasure: (m: number) => number;
+  if (bars.length) {
+    // Bar map from the score (real bar lengths: pickups and split half-bars). Offsets are counted
+    // from the first bar's number, matching the line map's columns.
+    const n0 = bars[0].n;
+    measureAt = (sec) => {
+      const q = quarterAt(sec);
+      let i = bars.length - 1;
+      while (i > 0 && bars[i].startQ > q) i--;
+      const b = bars[i];
+      return b.n - n0 + Math.min(1, Math.max(0, (q - b.startQ) / b.lenQ));
+    };
+    timeAtMeasure = (m) => {
+      const target = n0 + Math.floor(m);
+      const b = bars.find((x) => x.n === target) ?? (m <= 0 ? bars[0] : bars[bars.length - 1]);
+      const frac = b.n === target ? m - Math.floor(m) : m <= 0 ? 0 : 1;
+      return secAtQuarter(b.startQ + frac * b.lenQ);
+    };
+  } else {
+    // Fallback: full bars from the time signatures.
+    const sigs = (midi.header.timeSignatures.length
+      ? midi.header.timeSignatures
+      : [{ ticks: 0, timeSignature: [4, 4] }]
+    ).map((s) => ({ ticks: s.ticks, len: (ppq * 4 * s.timeSignature[0]) / s.timeSignature[1] }));
+    const starts: number[] = [];
+    let acc = 0;
+    for (let i = 0; i < sigs.length; i++) {
+      starts.push(acc);
+      if (i + 1 < sigs.length) acc += (sigs[i + 1].ticks - sigs[i].ticks) / sigs[i].len;
+    }
+    measureAt = (sec) => {
+      const ticks = midi.header.secondsToTicks(Math.max(0, sec));
+      let i = sigs.length - 1;
+      while (i > 0 && sigs[i].ticks > ticks) i--;
+      return starts[i] + (ticks - sigs[i].ticks) / sigs[i].len;
+    };
+    timeAtMeasure = (m) => {
+      let i = starts.length - 1;
+      while (i > 0 && starts[i] > m) i--;
+      return midi.header.ticksToSeconds(sigs[i].ticks + (m - starts[i]) * sigs[i].len);
+    };
   }
-  const measureAt = (sec: number) => {
-    const ticks = midi.header.secondsToTicks(Math.max(0, sec));
-    let i = sigs.length - 1;
-    while (i > 0 && sigs[i].ticks > ticks) i--;
-    return starts[i] + (ticks - sigs[i].ticks) / sigs[i].len;
-  };
-  const timeAtMeasure = (m: number) => {
-    let i = starts.length - 1;
-    while (i > 0 && starts[i] > m) i--;
-    return midi.header.ticksToSeconds(sigs[i].ticks + (m - starts[i]) * sigs[i].len);
-  };
   const lastEnd = events.reduce((mx, e) => Math.max(mx, e.t + e.d), 0);
-  return { events, duration: Math.max(midi.duration, lastEnd), programs: [...programs], measureAt, timeAtMeasure };
+  return { events, duration: Math.max(midi.duration, lastEnd), programs: [...programs], measureAt, timeAtMeasure, quarterAt };
 }
 
 type Listener = () => void;
@@ -135,8 +161,8 @@ export class ABPlayer {
   private listeners = new Set<Listener>();
   private disposed = false;
 
-  constructor(midi: { original: string; arranged: string }, side: Side = "arranged") {
-    this.tracks = { original: parseMidi(midi.original), arranged: parseMidi(midi.arranged) };
+  constructor(midi: { original: string; arranged: string }, side: Side = "arranged", bars: Bar[] = []) {
+    this.tracks = { original: parseMidi(midi.original, bars), arranged: parseMidi(midi.arranged, bars) };
     this.side = side;
   }
 
@@ -161,6 +187,9 @@ export class ABPlayer {
   /** Fractional measure offset (0 = first bar's downbeat) of the current position. */
   get measurePosition(): number {
     return this.tracks[this.side].measureAt(this.position);
+  }
+  get quarterPosition(): number {
+    return this.tracks[this.side].quarterAt(this.position);
   }
 
   async ensureLoaded(): Promise<boolean> {

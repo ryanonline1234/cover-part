@@ -10,6 +10,7 @@ import sys
 from pathlib import Path
 
 METRICS = [
+    ("melody_id", "Melody identified (planner's own labels vs the reference map)", "higher"),
     ("melody", "Reference melody kept", "higher"),
     ("bass", "Harmonic bass preserved", "higher"),
     ("inversions", "Notes sounding under the bass line", "lower"),
@@ -20,9 +21,21 @@ METRICS = [
 ]
 
 
-def row(res: dict) -> dict:
+_ALIAS = {"Violin I": "P1", "Violin II": "P2", "Viola": "P3", "Violoncello": "P4", "Cello": "P4"}
+
+
+def melody_identified(res: dict, melody_map: list[dict]) -> float | None:
+    """Share of reference-melody bars (part × bar) that the planner itself labeled 'melody'."""
+    ref = {(_ALIAS[x["part"]], b) for x in melody_map for b in range(x["start_measure"], x["end_measure"] + 1)}
+    lab = {(r["source_part"], b) for r in res["plan"].get("roles", []) if r["role"] == "melody"
+           for b in range(r["start_measure"], r["end_measure"] + 1)}
+    return round(len(ref & lab) / len(ref), 3) if ref else None
+
+
+def row(res: dict, melody_map: list[dict] | None = None) -> dict:
     c = res["checks"]
     return {
+        "melody_id": melody_identified(res, melody_map or []),
         "melody": c["essential_coverage"]["melody"],
         "bass": c["essential_coverage"]["bass"],
         "inversions": c.get("bass_inversions"),
@@ -35,11 +48,13 @@ def row(res: dict) -> dict:
 
 
 def build(demo_dir: Path) -> dict:
+    manifest = json.loads((demo_dir.resolve().parents[2] / "corpus" / "manifest.json").read_text())
+    maps = {e["id"]: e.get("melody_map", []) for e in manifest["excerpts"]}
     pairs = {}
     for f in sorted(demo_dir.glob("osq-*__*__*.json")):
         piece, roster, planner = f.stem.split("__")
         res = json.loads(f.read_text())
-        pairs.setdefault((piece, roster), {})[planner] = row(res) | {"result_id": f.stem}
+        pairs.setdefault((piece, roster), {})[planner] = row(res, maps.get(piece)) | {"result_id": f.stem}
     rows = []
     for (piece, roster), d in sorted(pairs.items()):
         if "ai" in d and "greedy" in d:

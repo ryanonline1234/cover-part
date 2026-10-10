@@ -1,34 +1,386 @@
 {
  "pieces": [
   {
-   "id": "dminor-sketch",
-   "title": "Quartet sketch in D minor (mock)",
-   "composer": "Mock data, not a real piece",
-   "movement": "I",
+   "id": "osq-haydn-op76no3-ii-m0-20",
+   "title": "String Quartet in C major, Hob.III:77, Op.76 No.3 (\u201cEmperor\u201d)",
+   "composer": "Joseph Haydn",
+   "movement": "II. Poco adagio; cantabile \u2014 Theme",
+   "source": "OpenScore String Quartets (CC0)",
+   "source_url": "https://github.com/OpenScore/StringQuartets/blob/main/scores/Haydn,_Joseph/String_Quartet_in_C_major,_Hob.III77,_Op.76_No.3/sq20428156.mxl",
+   "license": "CC0-1.0",
+   "why": "Easy hero: Haydn's \u201cEmperor\u201d hymn, melody in Violin I over a clean four-part chorale accompaniment.",
    "measures": [
-    1,
-    4
+    0,
+    20
    ],
-   "source": "Hand-written mock for UI development",
-   "source_url": "https://github.com/OpenScore/StringQuartets",
    "results": [
     {
-     "result_id": "mock-dminor-sketch__winds4__ai",
-     "roster_id": "winds4",
-     "roster_label": "Flute, clarinet, alto sax, bassoon",
+     "result_id": "osq-haydn-op76no3-ii-m0-20__church_brass__ai",
+     "roster_id": "church_brass",
+     "roster_label": "Church brass: 2 trumpets (one beginner), horn, euphonium",
      "planner": "ai"
     },
     {
-     "result_id": "mock-dminor-sketch__winds4__greedy",
-     "roster_id": "winds4",
-     "roster_label": "Flute, clarinet, alto sax, bassoon",
+     "result_id": "osq-haydn-op76no3-ii-m0-20__church_brass__greedy",
+     "roster_id": "church_brass",
+     "roster_label": "Church brass: 2 trumpets (one beginner), horn, euphonium",
      "planner": "greedy"
     },
     {
-     "result_id": "mock-dminor-sketch__noviola__ai",
-     "roster_id": "noviola",
-     "roster_label": "Two violins and cello (no viola)",
+     "result_id": "osq-haydn-op76no3-ii-m0-20__no_viola__ai",
+     "roster_id": "no_viola",
+     "roster_label": "Quartet that lost its viola: 2 violins, cello, + a clarinet",
      "planner": "ai"
+    },
+    {
+     "result_id": "osq-haydn-op76no3-ii-m0-20__no_viola__greedy",
+     "roster_id": "no_viola",
+     "roster_label": "Quartet that lost its viola: 2 violins, cello, + a clarinet",
+     "planner": "greedy"
+    },
+    {
+     "result_id": "osq-haydn-op76no3-ii-m0-20__sax_trio__ai",
+     "roster_id": "sax_trio",
+     "roster_label": "Three saxes and nothing else",
+     "planner": "ai"
+    },
+    {
+     "result_id": "osq-haydn-op76no3-ii-m0-20__sax_trio__greedy",
+     "roster_id": "sax_trio",
+     "roster_label": "Three saxes and nothing else",
+     "planner": "greedy"
+    },
+    {
+     "result_id": "osq-haydn-op76no3-ii-m0-20__winds4__ai",
+     "roster_id": "winds4",
+     "roster_label": "Flute, clarinet, alto sax, bassoon",
+     "planner": "ai"
+    },
+    {
+     "result_id": "osq-haydn-op76no3-ii-m0-20__winds4__greedy",
+     "roster_id": "winds4",
+     "roster_label": "Flute, clarinet, alto sax, bassoon",
+     "planner": "greedy"
+    }
+   ]
+  },
+  {
+   "id": "osq-haydn-op76no3-ii-m40-60",
+   "title": "String Quartet in C major, Hob.III:77, Op.76 No.3 (\u201cEmperor\u201d)",
+   "composer": "Joseph Haydn",
+   "movement": "II. Poco adagio; cantabile \u2014 Var. II",
+   "source": "OpenScore String Quartets (CC0)",
+   "source_url": "https://github.com/OpenScore/StringQuartets/blob/main/scores/Haydn,_Joseph/String_Quartet_in_C_major,_Hob.III77,_Op.76_No.3/sq20428156.mxl",
+   "license": "CC0-1.0",
+   "why": "Same hymn moved to the cello while Violin I plays a syncopated countermelody above it: a top-voice baseline picks the wrong line.",
+   "measures": [
+    40,
+    60
+   ],
+   "results": [
+    {
+     "result_id": "osq-haydn-op76no3-ii-m40-60__church_brass__ai",
+     "roster_id": "church_brass",
+     "roster_label": "Church brass: 2 trumpets (one beginner), horn, euphonium",
+     "planner": "ai"
+    },
+    {
+     "result_id": "osq-haydn-op76no3-ii-m40-60__church_brass__greedy",
+     "roster_id": "church_brass",
+     "roster_label": "Church brass: 2 trumpets (one beginner), horn, euphonium",
+     "planner": "greedy"
+    },
+    {
+     "result_id": "osq-haydn-op76no3-ii-m40-60__no_viola__ai",
+     "roster_id": "no_viola",
+     "roster_label": "Quartet that lost its viola: 2 violins, cello, + a clarinet",
+     "planner": "ai"
+    },
+    {
+     "result_id": "osq-haydn-op76no3-ii-m40-60__no_viola__greedy",
+     "roster_id": "no_viola",
+     "roster_label": "Quartet that lost its viola: 2 violins, cello, + a clarinet",
+     "planner": "greedy"
+    },
+    {
+     "result_id": "osq-haydn-op76no3-ii-m40-60__sax_trio__ai",
+     "roster_id": "sax_trio",
+     "roster_label": "Three saxes and nothing else",
+     "planner": "ai"
+    },
+    {
+     "result_id": "osq-haydn-op76no3-ii-m40-60__sax_trio__greedy",
+     "roster_id": "sax_trio",
+     "roster_label": "Three saxes and nothing else",
+     "planner": "greedy"
+    },
+    {
+     "result_id": "osq-haydn-op76no3-ii-m40-60__winds4__ai",
+     "roster_id": "winds4",
+     "roster_label": "Flute, clarinet, alto sax, bassoon",
+     "planner": "ai"
+    },
+    {
+     "result_id": "osq-haydn-op76no3-ii-m40-60__winds4__greedy",
+     "roster_id": "winds4",
+     "roster_label": "Flute, clarinet, alto sax, bassoon",
+     "planner": "greedy"
+    }
+   ]
+  },
+  {
+   "id": "osq-dvorak-op96-ii-m1-18",
+   "title": "String Quartet No.12 in F major, Op.96 (\u201cAmerican\u201d)",
+   "composer": "Anton\u00edn Dvo\u0159\u00e1k",
+   "movement": "II. Lento",
+   "source": "OpenScore String Quartets (CC0)",
+   "source_url": "https://github.com/OpenScore/StringQuartets/blob/main/scores/Dvo%C5%99%C3%A1k,_Anton%C3%ADn/String_Quartet_No.12,_Op.96_(%E2%80%9CAmerican%E2%80%9D)/sq8885439.mxl",
+   "license": "CC0-1.0",
+   "why": "Pretty and clear, then a handoff: Violin I sings the theme, then the cello takes it over while Violin I drops to the repeated-note accompaniment on top.",
+   "measures": [
+    1,
+    18
+   ],
+   "results": [
+    {
+     "result_id": "osq-dvorak-op96-ii-m1-18__church_brass__ai",
+     "roster_id": "church_brass",
+     "roster_label": "Church brass: 2 trumpets (one beginner), horn, euphonium",
+     "planner": "ai"
+    },
+    {
+     "result_id": "osq-dvorak-op96-ii-m1-18__church_brass__greedy",
+     "roster_id": "church_brass",
+     "roster_label": "Church brass: 2 trumpets (one beginner), horn, euphonium",
+     "planner": "greedy"
+    },
+    {
+     "result_id": "osq-dvorak-op96-ii-m1-18__no_viola__ai",
+     "roster_id": "no_viola",
+     "roster_label": "Quartet that lost its viola: 2 violins, cello, + a clarinet",
+     "planner": "ai"
+    },
+    {
+     "result_id": "osq-dvorak-op96-ii-m1-18__no_viola__greedy",
+     "roster_id": "no_viola",
+     "roster_label": "Quartet that lost its viola: 2 violins, cello, + a clarinet",
+     "planner": "greedy"
+    },
+    {
+     "result_id": "osq-dvorak-op96-ii-m1-18__sax_trio__ai",
+     "roster_id": "sax_trio",
+     "roster_label": "Three saxes and nothing else",
+     "planner": "ai"
+    },
+    {
+     "result_id": "osq-dvorak-op96-ii-m1-18__sax_trio__greedy",
+     "roster_id": "sax_trio",
+     "roster_label": "Three saxes and nothing else",
+     "planner": "greedy"
+    },
+    {
+     "result_id": "osq-dvorak-op96-ii-m1-18__winds4__ai",
+     "roster_id": "winds4",
+     "roster_label": "Flute, clarinet, alto sax, bassoon",
+     "planner": "ai"
+    },
+    {
+     "result_id": "osq-dvorak-op96-ii-m1-18__winds4__greedy",
+     "roster_id": "winds4",
+     "roster_label": "Flute, clarinet, alto sax, bassoon",
+     "planner": "greedy"
+    }
+   ]
+  },
+  {
+   "id": "osq-dvorak-op96-i-m1-20",
+   "title": "String Quartet No.12 in F major, Op.96 (\u201cAmerican\u201d)",
+   "composer": "Anton\u00edn Dvo\u0159\u00e1k",
+   "movement": "I. Allegro ma non troppo",
+   "source": "OpenScore String Quartets (CC0)",
+   "source_url": "https://github.com/OpenScore/StringQuartets/blob/main/scores/Dvo%C5%99%C3%A1k,_Anton%C3%ADn/String_Quartet_No.12,_Op.96_(%E2%80%9CAmerican%E2%80%9D)/sq8885439.mxl",
+   "license": "CC0-1.0",
+   "why": "The famous viola opening: the theme starts in the viola under violin tremolo, moves to Violin I, then trades between cello and Violin I and cascades up through all four parts.",
+   "measures": [
+    1,
+    20
+   ],
+   "results": [
+    {
+     "result_id": "osq-dvorak-op96-i-m1-20__church_brass__ai",
+     "roster_id": "church_brass",
+     "roster_label": "Church brass: 2 trumpets (one beginner), horn, euphonium",
+     "planner": "ai"
+    },
+    {
+     "result_id": "osq-dvorak-op96-i-m1-20__church_brass__greedy",
+     "roster_id": "church_brass",
+     "roster_label": "Church brass: 2 trumpets (one beginner), horn, euphonium",
+     "planner": "greedy"
+    },
+    {
+     "result_id": "osq-dvorak-op96-i-m1-20__no_viola__ai",
+     "roster_id": "no_viola",
+     "roster_label": "Quartet that lost its viola: 2 violins, cello, + a clarinet",
+     "planner": "ai"
+    },
+    {
+     "result_id": "osq-dvorak-op96-i-m1-20__no_viola__greedy",
+     "roster_id": "no_viola",
+     "roster_label": "Quartet that lost its viola: 2 violins, cello, + a clarinet",
+     "planner": "greedy"
+    },
+    {
+     "result_id": "osq-dvorak-op96-i-m1-20__sax_trio__ai",
+     "roster_id": "sax_trio",
+     "roster_label": "Three saxes and nothing else",
+     "planner": "ai"
+    },
+    {
+     "result_id": "osq-dvorak-op96-i-m1-20__sax_trio__greedy",
+     "roster_id": "sax_trio",
+     "roster_label": "Three saxes and nothing else",
+     "planner": "greedy"
+    },
+    {
+     "result_id": "osq-dvorak-op96-i-m1-20__winds4__ai",
+     "roster_id": "winds4",
+     "roster_label": "Flute, clarinet, alto sax, bassoon",
+     "planner": "ai"
+    },
+    {
+     "result_id": "osq-dvorak-op96-i-m1-20__winds4__greedy",
+     "roster_id": "winds4",
+     "roster_label": "Flute, clarinet, alto sax, bassoon",
+     "planner": "greedy"
+    }
+   ]
+  },
+  {
+   "id": "osq-haydn-op20no2-i-m0-14",
+   "title": "String Quartet in C major, Hob.III:32, Op.20 No.2",
+   "composer": "Joseph Haydn",
+   "movement": "I. Moderato",
+   "source": "OpenScore String Quartets (CC0)",
+   "source_url": "https://github.com/OpenScore/StringQuartets/blob/main/scores/Haydn,_Joseph/String_Quartet_in_C_major,_Hob.III32,_Op.20_No.2/sq8088531.mxl",
+   "license": "CC0-1.0",
+   "why": "Cello leads in its tenor register above Violin II and viola while Violin I is silent, then Violin I takes over, then Violin II (doubled by viola) carries the line under a Violin I pedal.",
+   "measures": [
+    0,
+    14
+   ],
+   "results": [
+    {
+     "result_id": "osq-haydn-op20no2-i-m0-14__church_brass__ai",
+     "roster_id": "church_brass",
+     "roster_label": "Church brass: 2 trumpets (one beginner), horn, euphonium",
+     "planner": "ai"
+    },
+    {
+     "result_id": "osq-haydn-op20no2-i-m0-14__church_brass__greedy",
+     "roster_id": "church_brass",
+     "roster_label": "Church brass: 2 trumpets (one beginner), horn, euphonium",
+     "planner": "greedy"
+    },
+    {
+     "result_id": "osq-haydn-op20no2-i-m0-14__no_viola__ai",
+     "roster_id": "no_viola",
+     "roster_label": "Quartet that lost its viola: 2 violins, cello, + a clarinet",
+     "planner": "ai"
+    },
+    {
+     "result_id": "osq-haydn-op20no2-i-m0-14__no_viola__greedy",
+     "roster_id": "no_viola",
+     "roster_label": "Quartet that lost its viola: 2 violins, cello, + a clarinet",
+     "planner": "greedy"
+    },
+    {
+     "result_id": "osq-haydn-op20no2-i-m0-14__sax_trio__ai",
+     "roster_id": "sax_trio",
+     "roster_label": "Three saxes and nothing else",
+     "planner": "ai"
+    },
+    {
+     "result_id": "osq-haydn-op20no2-i-m0-14__sax_trio__greedy",
+     "roster_id": "sax_trio",
+     "roster_label": "Three saxes and nothing else",
+     "planner": "greedy"
+    },
+    {
+     "result_id": "osq-haydn-op20no2-i-m0-14__winds4__ai",
+     "roster_id": "winds4",
+     "roster_label": "Flute, clarinet, alto sax, bassoon",
+     "planner": "ai"
+    },
+    {
+     "result_id": "osq-haydn-op20no2-i-m0-14__winds4__greedy",
+     "roster_id": "winds4",
+     "roster_label": "Flute, clarinet, alto sax, bassoon",
+     "planner": "greedy"
+    }
+   ]
+  },
+  {
+   "id": "osq-hensel-eflat-iii-m1-16",
+   "title": "String Quartet in E-flat major",
+   "composer": "Fanny Hensel (Mendelssohn)",
+   "movement": "III. Romanza",
+   "source": "OpenScore String Quartets (CC0)",
+   "source_url": "https://github.com/OpenScore/StringQuartets/blob/main/scores/Hensel,_Fanny_(Mendelssohn)/String_Quartet_in_E-flat_major,_Op._277/sq7577795.mxl",
+   "license": "CC0-1.0",
+   "why": "Fanny Hensel's Romanza: Violin I states the theme, the viola echoes a phrase, then the cello restates the theme in its high tenor register under a Violin I countermelody.",
+   "measures": [
+    1,
+    16
+   ],
+   "results": [
+    {
+     "result_id": "osq-hensel-eflat-iii-m1-16__church_brass__ai",
+     "roster_id": "church_brass",
+     "roster_label": "Church brass: 2 trumpets (one beginner), horn, euphonium",
+     "planner": "ai"
+    },
+    {
+     "result_id": "osq-hensel-eflat-iii-m1-16__church_brass__greedy",
+     "roster_id": "church_brass",
+     "roster_label": "Church brass: 2 trumpets (one beginner), horn, euphonium",
+     "planner": "greedy"
+    },
+    {
+     "result_id": "osq-hensel-eflat-iii-m1-16__no_viola__ai",
+     "roster_id": "no_viola",
+     "roster_label": "Quartet that lost its viola: 2 violins, cello, + a clarinet",
+     "planner": "ai"
+    },
+    {
+     "result_id": "osq-hensel-eflat-iii-m1-16__no_viola__greedy",
+     "roster_id": "no_viola",
+     "roster_label": "Quartet that lost its viola: 2 violins, cello, + a clarinet",
+     "planner": "greedy"
+    },
+    {
+     "result_id": "osq-hensel-eflat-iii-m1-16__sax_trio__ai",
+     "roster_id": "sax_trio",
+     "roster_label": "Three saxes and nothing else",
+     "planner": "ai"
+    },
+    {
+     "result_id": "osq-hensel-eflat-iii-m1-16__sax_trio__greedy",
+     "roster_id": "sax_trio",
+     "roster_label": "Three saxes and nothing else",
+     "planner": "greedy"
+    },
+    {
+     "result_id": "osq-hensel-eflat-iii-m1-16__winds4__ai",
+     "roster_id": "winds4",
+     "roster_label": "Flute, clarinet, alto sax, bassoon",
+     "planner": "ai"
+    },
+    {
+     "result_id": "osq-hensel-eflat-iii-m1-16__winds4__greedy",
+     "roster_id": "winds4",
+     "roster_label": "Flute, clarinet, alto sax, bassoon",
+     "planner": "greedy"
     }
    ]
   }
@@ -54,7 +406,7 @@
     },
     {
      "id": "cl",
-     "label": "Clarinet in B♭",
+     "label": "Clarinet in B\u266d",
      "instrument": "clarinet",
      "level": "intermediate",
      "range_written": [
@@ -63,12 +415,12 @@
      ],
      "range_sounding": [
       "D3",
-      "Bb5"
+      "B-5"
      ]
     },
     {
      "id": "asx",
-     "label": "Alto Sax",
+     "label": "Alto Sax in E\u266d",
      "instrument": "alto_sax",
      "level": "intermediate",
      "range_written": [
@@ -76,7 +428,7 @@
       "E6"
      ],
      "range_sounding": [
-      "Eb3",
+      "E-3",
       "G5"
      ]
     },
@@ -86,46 +438,46 @@
      "instrument": "bassoon",
      "level": "intermediate",
      "range_written": [
-      "Bb1",
-      "D5"
+      "B-1",
+      "G4"
      ],
      "range_sounding": [
-      "Bb1",
-      "D5"
+      "B-1",
+      "G4"
      ]
     }
    ]
   },
   {
-   "id": "noviola",
-   "label": "Two violins and cello (no viola)",
+   "id": "no_viola",
+   "label": "Quartet that lost its viola: 2 violins, cello, + a clarinet",
    "players": [
     {
      "id": "vn1",
-     "label": "Violin 1",
+     "label": "Violin",
      "instrument": "violin",
-     "level": "intermediate",
+     "level": "advanced",
      "range_written": [
       "G3",
-      "A6"
+      "E7"
      ],
      "range_sounding": [
       "G3",
-      "A6"
+      "E7"
      ]
     },
     {
      "id": "vn2",
-     "label": "Violin 2",
+     "label": "Violin",
      "instrument": "violin",
      "level": "intermediate",
      "range_written": [
       "G3",
-      "E6"
+      "D6"
      ],
      "range_sounding": [
       "G3",
-      "E6"
+      "D6"
      ]
     },
     {
@@ -135,11 +487,135 @@
      "level": "intermediate",
      "range_written": [
       "C2",
-      "E5"
+      "A4"
      ],
      "range_sounding": [
       "C2",
-      "E5"
+      "A4"
+     ]
+    },
+    {
+     "id": "cl",
+     "label": "Clarinet in B\u266d",
+     "instrument": "clarinet",
+     "level": "intermediate",
+     "range_written": [
+      "E3",
+      "C6"
+     ],
+     "range_sounding": [
+      "D3",
+      "B-5"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "church_brass",
+   "label": "Church brass: 2 trumpets (one beginner), horn, euphonium",
+   "players": [
+    {
+     "id": "tp1",
+     "label": "Trumpet in B\u266d",
+     "instrument": "trumpet",
+     "level": "intermediate",
+     "range_written": [
+      "G3",
+      "G5"
+     ],
+     "range_sounding": [
+      "F3",
+      "F5"
+     ]
+    },
+    {
+     "id": "tp2",
+     "label": "Trumpet 2 (beginner)",
+     "instrument": "trumpet",
+     "level": "beginner",
+     "range_written": [
+      "B-3",
+      "C5"
+     ],
+     "range_sounding": [
+      "A-3",
+      "B-4"
+     ]
+    },
+    {
+     "id": "hn",
+     "label": "Horn in F",
+     "instrument": "horn",
+     "level": "intermediate",
+     "range_written": [
+      "G3",
+      "G5"
+     ],
+     "range_sounding": [
+      "C3",
+      "C5"
+     ]
+    },
+    {
+     "id": "euph",
+     "label": "Euphonium",
+     "instrument": "euphonium",
+     "level": "intermediate",
+     "range_written": [
+      "F2",
+      "F4"
+     ],
+     "range_sounding": [
+      "F2",
+      "F4"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "sax_trio",
+   "label": "Three saxes and nothing else",
+   "players": [
+    {
+     "id": "asx",
+     "label": "Alto Sax in E\u266d",
+     "instrument": "alto_sax",
+     "level": "intermediate",
+     "range_written": [
+      "C4",
+      "E6"
+     ],
+     "range_sounding": [
+      "E-3",
+      "G5"
+     ]
+    },
+    {
+     "id": "tsx",
+     "label": "Tenor Sax in B\u266d",
+     "instrument": "tenor_sax",
+     "level": "intermediate",
+     "range_written": [
+      "C4",
+      "E6"
+     ],
+     "range_sounding": [
+      "B-2",
+      "D5"
+     ]
+    },
+    {
+     "id": "bsx",
+     "label": "Baritone Sax in E\u266d",
+     "instrument": "bari_sax",
+     "level": "intermediate",
+     "range_written": [
+      "C4",
+      "E6"
+     ],
+     "range_sounding": [
+      "E-2",
+      "G4"
      ]
     }
    ]

@@ -31,6 +31,7 @@ Six CC0 excerpts × four rosters = 24 pairs (`python -m coverpart.report`, resul
 
 | Metric | AI | Baseline | AI better / worse / tie |
 |---|---|---|---|
+| Melody identified (bars of the reference melody the planner itself labels "melody") | **73%** | 54% | 15 / 0 / 9 |
 | Harmonic bass preserved (share of time the cover's lowest note has the original's bass pitch class) | **94.9%** | 88.2% | 18 / 1 / 5 |
 | Notes sounding under the bass line (measured per moment against the original; the original itself scores 0) | **5.4** | 13.1 | 16 / 2 / 6 |
 | Single notes octave-folded in the final parts | **0.9** | 3.9 | 9 / 1 / 14 |
@@ -40,6 +41,7 @@ Six CC0 excerpts × four rosters = 24 pairs (`python -m coverpart.report`, resul
 | Bars of music left out | 6.9 | **4.2** | 0 / 9 / 15 |
 
 What this does and doesn't show:
+- The AI **finds the tune when it leaves the top line** in four of the five excerpts where that happens: 94–97% of the reference melody bars on the Dvořák Lento, Haydn Op. 20 and Hensel, against 50–69% for the baseline. It **fails on Haydn's Emperor Variation II**: in all four rosters it labels the busy violin countermelody as the tune, which is the baseline's mistake too. The cello's hymn is still kept, because a line doesn't need the "melody" label to be played.
 - The AI's advantage is in **voicing and continuity**: it keeps the bass at the bottom and keeps each line with one player. Its first drafts are no better than the baseline at fitting ranges. The revision loop is what removes the folded notes.
 - The AI **leaves out more music**: 59 of its 165 dropped bars are in the church-brass roster. There it rests the beginner trumpet on lines it can't play, while the baseline gives every line to someone and octave-folds the notes that don't fit. Every bar the AI drops is a line it labeled inner, accompaniment, countermelody or doubling, never melody or bass. Whether that's the right call is a director's judgment.
 - These are code-checkable properties. **Whether a cover sounds good needs a musician's ear**, and that hasn't been measured yet.
