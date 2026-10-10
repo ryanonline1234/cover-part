@@ -13,11 +13,10 @@ PUBLISHED: public repo https://github.com/ryanonline1234/cover-part, live https:
 ## Pending (needs Ryan unless noted)
 0. Ryan: send the organizer email (Gmail draft) + Discord post; do guide Blocks A–D.
 1. Ryan: how to describe his role (rec: "I chose the project and directed Claude Code"; full breakdown in README).
-2. Ryan: go-ahead to create the public GitHub repo + deploy to Vercel (required: public repo, live link).
 3. Ryan: musician listening check of 2–3 A/B pairs (optional, strongest evidence of quality).
 4. Ryan: name on screen; narrate the video; upload to YouTube/Vimeo; submit Devpost form by 11:15 AM Oct 11.
 5. Claude: script workflow → measure → verify → record takes → assemble (app-demo-video skill).
-6. Claude: README "How this was built" / AI-use section after Ryan answers #1.
+6. Claude: update README "Ryan's contributions" as Ryan finishes guide blocks (AI-use section already published).
 
 ## Pending spec patches
 - docs/01: result JSON also carries `summary_for_planner`, `log`, `elapsed_s` (not yet listed).
