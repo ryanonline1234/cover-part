@@ -1,0 +1,148 @@
+{
+ "pieces": [
+  {
+   "id": "dminor-sketch",
+   "title": "Quartet sketch in D minor (mock)",
+   "composer": "Mock data, not a real piece",
+   "movement": "I",
+   "measures": [
+    1,
+    4
+   ],
+   "source": "Hand-written mock for UI development",
+   "source_url": "https://github.com/OpenScore/StringQuartets",
+   "results": [
+    {
+     "result_id": "mock-dminor-sketch__winds4__ai",
+     "roster_id": "winds4",
+     "roster_label": "Flute, clarinet, alto sax, bassoon",
+     "planner": "ai"
+    },
+    {
+     "result_id": "mock-dminor-sketch__winds4__greedy",
+     "roster_id": "winds4",
+     "roster_label": "Flute, clarinet, alto sax, bassoon",
+     "planner": "greedy"
+    },
+    {
+     "result_id": "mock-dminor-sketch__noviola__ai",
+     "roster_id": "noviola",
+     "roster_label": "Two violins and cello (no viola)",
+     "planner": "ai"
+    }
+   ]
+  }
+ ],
+ "rosters": [
+  {
+   "id": "winds4",
+   "label": "Flute, clarinet, alto sax, bassoon",
+   "players": [
+    {
+     "id": "fl",
+     "label": "Flute",
+     "instrument": "flute",
+     "level": "intermediate",
+     "range_written": [
+      "D4",
+      "G6"
+     ],
+     "range_sounding": [
+      "D4",
+      "G6"
+     ]
+    },
+    {
+     "id": "cl",
+     "label": "Clarinet in B♭",
+     "instrument": "clarinet",
+     "level": "intermediate",
+     "range_written": [
+      "E3",
+      "C6"
+     ],
+     "range_sounding": [
+      "D3",
+      "Bb5"
+     ]
+    },
+    {
+     "id": "asx",
+     "label": "Alto Sax",
+     "instrument": "alto_sax",
+     "level": "intermediate",
+     "range_written": [
+      "C4",
+      "E6"
+     ],
+     "range_sounding": [
+      "Eb3",
+      "G5"
+     ]
+    },
+    {
+     "id": "bsn",
+     "label": "Bassoon",
+     "instrument": "bassoon",
+     "level": "intermediate",
+     "range_written": [
+      "Bb1",
+      "D5"
+     ],
+     "range_sounding": [
+      "Bb1",
+      "D5"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "noviola",
+   "label": "Two violins and cello (no viola)",
+   "players": [
+    {
+     "id": "vn1",
+     "label": "Violin 1",
+     "instrument": "violin",
+     "level": "intermediate",
+     "range_written": [
+      "G3",
+      "A6"
+     ],
+     "range_sounding": [
+      "G3",
+      "A6"
+     ]
+    },
+    {
+     "id": "vn2",
+     "label": "Violin 2",
+     "instrument": "violin",
+     "level": "intermediate",
+     "range_written": [
+      "G3",
+      "E6"
+     ],
+     "range_sounding": [
+      "G3",
+      "E6"
+     ]
+    },
+    {
+     "id": "vc",
+     "label": "Cello",
+     "instrument": "cello",
+     "level": "intermediate",
+     "range_written": [
+      "C2",
+      "E5"
+     ],
+     "range_sounding": [
+      "C2",
+      "E5"
+     ]
+    }
+   ]
+  }
+ ]
+}
