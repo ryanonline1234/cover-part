@@ -14,6 +14,21 @@
   text-align: center;
 }
 
+/* ---------- intro: what this is, at every width ---------- */
+
+.tool-intro {
+  margin-top: clamp(1rem, 2.6vw, 1.5rem);
+  max-width: 112ch;
+  font-size: 0.98rem;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+
+.tool-intro a {
+  color: var(--ink);
+  white-space: nowrap;
+}
+
 /* ---------- steps ---------- */
 
 .step {
@@ -55,6 +70,17 @@
 }
 
 /* ---------- A. music ---------- */
+
+.step-note {
+  margin: -0.4rem 0 0.8rem;
+  font-size: 0.9rem;
+  color: var(--ink-2);
+  max-width: 78ch;
+}
+
+.piece-length {
+  font-style: italic;
+}
 
 .music {
   margin: 0;
@@ -361,6 +387,15 @@
   font-style: italic;
 }
 
+/* More players than the piece has lines: said before arranging. */
+.band-warn {
+  margin-top: 0.8rem;
+  padding: 0.4rem 0 0.4rem 0.8rem;
+  border-left: 3px solid var(--ink);
+  font-size: 0.92rem;
+  max-width: 78ch;
+}
+
 .arrange-bar {
   display: flex;
   flex-wrap: wrap;
@@ -385,7 +420,8 @@
   background: #000;
 }
 
-.btn-primary:disabled {
+.btn-primary:disabled,
+.btn-primary[aria-disabled="true"] {
   background: transparent;
   color: var(--ink-3);
   border-color: var(--rule);
@@ -407,6 +443,10 @@
   font-size: 1.15rem;
   color: var(--ink);
   font-variant-numeric: lining-nums tabular-nums;
+}
+
+.arrange-done strong {
+  font-weight: 600;
 }
 
 .arrange-done::before {
@@ -503,7 +543,7 @@
   margin: 1.1rem 0 1.4rem;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   border-top: 1px solid var(--ink);
   border-bottom: 1px solid var(--rule);
 }
@@ -559,6 +599,37 @@
   vertical-align: middle;
 }
 
+/* A number worth a look: a heavy rule on top, a faint hatch, and an "!" (no new color: color means a line). */
+.check.is-warn .check-btn {
+  box-shadow: inset 0 3px 0 var(--ink);
+  background: repeating-linear-gradient(-45deg, rgba(30, 28, 24, 0.07) 0 1.5px, transparent 1.5px 7px);
+}
+
+.check.is-warn .check-btn:hover,
+.check.is-warn.is-open .check-btn {
+  background-color: rgba(30, 28, 24, 0.04);
+}
+
+.check.is-warn .check-value::before {
+  content: "!";
+  display: inline-grid;
+  place-items: center;
+  width: 0.95em;
+  height: 0.95em;
+  margin: 0 0.3em 0.1em 0;
+  border: 1.5px solid var(--ink);
+  border-radius: 50%;
+  font-family: var(--text);
+  font-size: 0.6em;
+  font-weight: 700;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+.check.is-warn .check-sub {
+  color: var(--ink-2);
+}
+
 .check-sub {
   font-size: 0.78rem;
   color: var(--ink-3);
@@ -581,8 +652,7 @@
   pointer-events: none;
 }
 
-.check:last-child .check-def,
-.check:nth-child(3) .check-def {
+.check:nth-child(n + 4) .check-def {
   left: auto;
   right: 0;
 }
@@ -870,9 +940,14 @@
   background: rgba(30, 28, 24, 0.06);
 }
 
-.card-play.is-on {
+.card-play.is-on,
+.card-play.is-on:hover:not(:disabled) {
   background: var(--ink);
   color: var(--sheet);
+}
+
+.card-play.is-on:hover:not(:disabled) {
+  background: #000;
 }
 
 .card-play:disabled {
@@ -979,6 +1054,27 @@
   .music-list {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+  /* Five checks: three on top, two below (the last one wide). */
+  .checkline {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .check:nth-child(4) {
+    border-left: 0;
+  }
+  .check:nth-child(n + 4) {
+    border-top: 1px solid var(--rule);
+  }
+  .check:last-child {
+    grid-column: span 2;
+  }
+  .check:nth-child(3) .check-def {
+    left: auto;
+    right: 0;
+  }
+  .check:nth-child(4) .check-def {
+    left: 0;
+    right: auto;
+  }
 }
 
 @media (max-width: 640px) {
@@ -1017,11 +1113,17 @@
   .checkline {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .check:nth-child(3) {
+  .check:nth-child(odd) {
     border-left: 0;
+  }
+  .check:nth-child(4) {
+    border-left: 1px solid var(--rule);
   }
   .check:nth-child(n + 3) {
     border-top: 1px solid var(--rule);
+  }
+  .check:last-child {
+    grid-column: 1 / -1;
   }
   .check:nth-child(odd) .check-def {
     left: 0;

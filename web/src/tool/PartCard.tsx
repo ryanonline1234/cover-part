@@ -117,17 +117,19 @@ export function PartCard({ result, player: p, n, name, audio, track, active, onP
   const loading = audio?.load.status === "loading" && isActive;
   const btn = (mode: PlayMode) => {
     const on = playing && active?.mode === mode;
+    const text = mode === "solo" ? (on ? "Pause" : "This part alone") : on ? "Pause" : "With the band";
     return (
       <button
         type="button"
         className={`card-play ${on ? "is-on" : ""}`}
         onClick={() => onPlay(p.id, mode)}
         disabled={!audio || (mode === "solo" && track === null)}
-        aria-pressed={on}
+        // The visible text is the same on every card; the accessible name says whose part it is.
+        aria-label={`${text}: ${title}`}
         title={mode === "solo" && track === null ? "This result's audio can't be split by player." : undefined}
       >
         <PlayIcon playing={on} />
-        {mode === "solo" ? (on ? "Pause" : "This part alone") : on ? "Pause" : "With the band"}
+        {text}
       </button>
     );
   };
@@ -182,7 +184,7 @@ export function PartCard({ result, player: p, n, name, audio, track, active, onP
         {btn("solo")}
         {btn("band")}
         <span className="part-actions-sep" aria-hidden="true" />
-        <button type="button" className="card-link" onClick={() => onPrint(p.id)} disabled={!xml}>
+        <button type="button" className="card-link" onClick={() => onPrint(p.id)} disabled={!xml} aria-label={`Print: ${title}`}>
           Print
         </button>
         <button
@@ -190,6 +192,7 @@ export function PartCard({ result, player: p, n, name, audio, track, active, onP
           className="card-link"
           onClick={() => onDownload(p.id)}
           disabled={!xml}
+          aria-label={`Download .musicxml: ${title}`}
           title="This part as a .musicxml file (opens in MuseScore, Finale, Sibelius, Dorico)"
         >
           Download<span className="card-link-ext"> .musicxml</span>

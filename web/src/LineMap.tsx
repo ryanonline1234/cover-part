@@ -147,9 +147,23 @@ export function LineMap({ result, player }: Props) {
       <ul className="routes">
         {result.source_parts.map((sp) => {
           const role = steadyRole(result, sp.id);
-          const asg = result.plan.assignments
-            .filter((a) => a.source_part === sp.id)
-            .sort((a, b) => a.start_measure - b.start_measure);
+          // Consecutive spans with the same player and octave read as one ("Flute (mm. 1–18)"), even when
+          // the plan split them because the line's role changed.
+          const mine = result.plan.assignments.filter((a) => a.source_part === sp.id);
+          // Doublings (extra players playing along) are listed after the line's own players.
+          const doublers = mine
+            .filter((a) => a.role === "doubling")
+            .sort((a, b) => a.start_measure - b.start_measure || a.player.localeCompare(b.player));
+          const asg = mine
+            .filter((a) => a.role !== "doubling")
+            .sort((a, b) => a.start_measure - b.start_measure)
+            .reduce<Array<{ player: string; octave_shift: number; start_measure: number; end_measure: number }>>((out, a) => {
+              const prev = out[out.length - 1];
+              if (prev && prev.player === a.player && prev.octave_shift === a.octave_shift && a.start_measure <= prev.end_measure + 1) {
+                prev.end_measure = Math.max(prev.end_measure, a.end_measure);
+              } else out.push({ player: a.player, octave_shift: a.octave_shift, start_measure: a.start_measure, end_measure: a.end_measure });
+              return out;
+            }, []);
           const drops = result.plan.dropped
             .filter((d) => d.source_part === sp.id)
             .sort((a, b) => a.start_measure - b.start_measure);
@@ -175,6 +189,19 @@ export function LineMap({ result, player }: Props) {
                         </span>
                       );
                     })}
+                {doublers.length > 0 && (
+                  <span className="route-doubled">
+                    ; doubled by{" "}
+                    {doublers.map((a, i) => (
+                      <span key={i}>
+                        {i > 0 && ", "}
+                        <span className="route-player">{players.get(a.player)?.label ?? a.player}</span>
+                        {octaveNote(a.octave_shift) && ` ${octaveNote(a.octave_shift)}`}{" "}
+                        <span className="mnums">({mm(a.start_measure, a.end_measure)})</span>
+                      </span>
+                    ))}
+                  </span>
+                )}
               </p>
               {drops.map((d, i) => (
                 <p className="route-drop" key={i}>

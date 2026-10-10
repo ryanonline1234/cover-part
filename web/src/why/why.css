@@ -75,7 +75,6 @@
 /* chrome: small caps on the text face, like score markings */
 .why-app-k,
 .why-top-k,
-.why-notes-label,
 .why-sub-k,
 .why-range-group,
 .why-pipe-who,
@@ -125,27 +124,54 @@
 
 /* ---------- page ---------- */
 
+/* styles.css widens the shared header and footer to the same 1240px on this page (.app--why). */
 .why-main {
   max-width: 1240px;
   margin: 0 auto;
   padding: 0 var(--w-gutter) 5rem;
 }
 
-.why-draft {
-  margin-top: 1.2rem;
-  padding: 0.45rem 0.75rem;
-  border: 1px dashed var(--w-rule);
-  color: var(--w-ink-3);
-  font-size: 0.86rem;
-  font-style: italic;
+.why-toc-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.4rem 1.6rem;
+  margin-top: 1rem;
 }
 
 .why-toc {
   display: flex;
   flex-wrap: wrap;
   gap: 0.2rem 1.4rem;
-  margin-top: 1rem;
   font-size: 0.98rem;
+}
+
+/* One page-level switch for every file/field citation (.why-src); off by default. */
+.why-src-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--w-ink-3);
+  font-size: 0.86rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.why-src-toggle input {
+  width: 0.95rem;
+  height: 0.95rem;
+  margin: 0;
+  accent-color: var(--w-ink);
+  cursor: pointer;
+}
+
+.why-src-toggle:hover {
+  color: var(--w-ink);
+}
+
+.why:not(.why--sources) .why-src {
+  display: none;
 }
 
 .why-toc button {
@@ -275,8 +301,12 @@
 
 /* ---------- notes (facts) and text ---------- */
 
+/* The section's points: plain reading text, numbered quietly. */
 .why-notes {
-  margin-top: 1.3rem;
+  max-width: 62ch;
+  margin: 1.2rem 0 0;
+  padding: 0;
+  list-style: none;
 }
 
 .why-sec--hero .why-notes,
@@ -284,53 +314,46 @@
   margin-top: 0;
 }
 
-.why-notes-label {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.1rem 0.7rem;
-  padding-bottom: 0.35rem;
-  border-bottom: 1px solid var(--w-ink);
-  font-size: 0.95rem;
-  color: var(--w-ink);
-}
-
-.why-notes-hint {
-  color: var(--w-ink-3);
-  font-size: 0.8rem;
-  font-style: italic;
-  font-variant-caps: normal;
-  letter-spacing: 0;
-}
-
-.why-notes ol {
-  margin: 0;
-  padding: 0;
-  list-style: none;
+.why-text + .why-notes {
+  margin-top: 1.4rem;
 }
 
 .why-notes li {
   display: grid;
-  grid-template-columns: 2rem minmax(0, 1fr);
-  column-gap: 0.2rem;
-  padding: 0.6rem 0 0.65rem;
-  border-bottom: 1px solid var(--w-rule-soft);
-  font-size: 0.93rem;
-  line-height: 1.45;
-  color: var(--w-ink-2);
+  grid-template-columns: 1.6rem minmax(0, 1fr);
+  column-gap: 0.15rem;
+  font-size: 1rem;
+  line-height: 1.55;
+  color: var(--w-ink);
+}
+
+.why-notes li + li {
+  margin-top: 0.85rem;
+}
+
+.why-notes.is-single li {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .why-note-n {
+  padding-top: 0.12em;
   font-family: var(--w-display);
   font-style: italic;
+  font-size: 0.92rem;
   color: var(--w-ink-3);
+  font-variant-numeric: lining-nums;
+}
+
+.why-note-body,
+.why-note-src {
+  grid-column: -2;
 }
 
 .why-note-src {
-  grid-column: 2;
-  margin-top: 0.25rem;
+  margin-top: 0.2rem;
   font-size: 0.74rem;
   font-style: italic;
+  line-height: 1.4;
   color: var(--w-ink-3);
   overflow-wrap: anywhere;
 }
@@ -962,6 +985,13 @@ figcaption.why-cap {
   border-bottom: 3px solid var(--w-ink);
 }
 
+.why-tl-legend .why-tl-key-ref {
+  display: block;
+  flex-basis: 100%;
+  color: var(--w-ink-3);
+  font-style: italic;
+}
+
 .why-tl-live {
   min-height: 2.6em;
 }
@@ -1398,10 +1428,23 @@ figcaption.why-cap {
   vertical-align: top;
 }
 
+/* Body cells stay on one line; header cells may wrap (a nowrap here once overrode styles.css's
+   .pairs thead th.num and made the headers overprint each other). */
 .why-board .tally .num,
 .why-board .pairs .num {
   text-align: right;
+}
+
+.why-board .tally td.num,
+.why-board .pairs td.num {
   white-space: nowrap;
+}
+
+.why-board .tally thead th.num,
+.why-board .pairs thead th.num {
+  white-space: normal;
+  vertical-align: bottom;
+  line-height: 1.2;
 }
 
 .why-board .is-better {
@@ -1450,7 +1493,91 @@ figcaption.why-cap {
 }
 
 .why-board .pairs {
-  font-size: 0.88rem;
+  font-size: 0.86rem;
+}
+
+.why-board .pairs th,
+.why-board .pairs td {
+  padding-right: 0.75rem;
+}
+
+.why-board .pairs thead th {
+  border-bottom-color: var(--w-ink);
+  color: var(--w-ink-2);
+  font-size: 0.8rem;
+}
+
+.why-board .pairs thead th.num {
+  min-width: 4.6rem;
+  max-width: 6.2rem;
+  cursor: help;
+}
+
+.why-board .pairs tbody th {
+  min-width: 9.5rem;
+}
+
+.why-board .pairs tbody td:nth-child(2) {
+  min-width: 6.5rem;
+  max-width: 9rem;
+  white-space: normal;
+}
+
+.why-board .pairs tbody tr {
+  cursor: pointer;
+}
+
+.why-board .pairs tbody tr:hover {
+  background: rgba(30, 28, 24, 0.035);
+}
+
+.why-board .pairs .pair-sep {
+  color: var(--w-ink-3);
+}
+
+.why-board .pairs-key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 1.1rem;
+  margin: 0 0 0.9rem;
+  font-size: 0.8rem;
+  color: var(--w-ink-3);
+}
+
+.why-board .pairs-key b {
+  color: var(--w-ink-2);
+  font-weight: 650;
+}
+
+.why-board .pairs-key-h {
+  flex-basis: 100%;
+  font-variant-caps: all-small-caps;
+  letter-spacing: 0.05em;
+  color: var(--w-ink-2);
+}
+
+/* Scroll cue, only when the table is wider than its box: a fade on the right edge plus a line below. */
+.why-board .pairs-wrap {
+  position: relative;
+}
+
+.why-board .pairs-wrap[data-overflow="true"][data-at-end="false"]::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 3.5rem;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, var(--w-ground));
+}
+
+.why-board .pairs-cue {
+  margin: 0 0 0.4rem;
+  text-align: right;
+  font-size: 0.8rem;
+  font-style: italic;
+  color: var(--w-ink-2);
 }
 
 .why-board .row-link {
@@ -1492,6 +1619,10 @@ figcaption.why-cap {
 .why-close-h a:hover,
 .why-close-h a:focus-visible {
   background-size: 100% 5px;
+}
+
+.why-close-text {
+  margin-top: 2rem;
 }
 
 /* ---------- motion (only when JS adds .why--motion, i.e. not reduced) ---------- */
@@ -1608,7 +1739,7 @@ figcaption.why-cap {
     --score-w: 0px;
   }
   .why-tl-row {
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr) 4.4rem;
     row-gap: 0.2rem;
   }
   .why-tl-label {
@@ -1619,7 +1750,10 @@ figcaption.why-cap {
   }
   .why-tl-row .why-tl-score {
     grid-column: 2;
-    min-width: 3.4rem;
+    min-width: 0;
+  }
+  .why-tl-score small {
+    font-size: 0.68rem;
   }
   .why-tl-ruler .why-tl-label {
     display: none;
@@ -1649,6 +1783,12 @@ figcaption.why-cap {
   }
   .why-total-row {
     grid-template-columns: 6.4rem minmax(0, 1fr) 2rem;
+  }
+  .why-board .pairs tbody th {
+    min-width: 7.5rem;
+  }
+  .why-board .pairs-cue {
+    text-align: left;
   }
 }
 

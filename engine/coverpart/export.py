@@ -29,9 +29,14 @@ def to_midi_b64(s: stream.Score) -> str:
     return base64.b64encode(mf.writestr()).decode("ascii")
 
 
-def with_title(s: stream.Score, title: str, composer: str | None = None) -> stream.Score:
+def with_title(s: stream.Score, title: str, composer: str | None = None,
+               movement: str | None = None) -> stream.Score:
+    """MusicXML work-title, movement-title and composer. Without a movement, music21 repeats the
+    title as the movement-title; without a composer it writes "Music21"."""
     s.metadata = metadata.Metadata()
     s.metadata.title = title
+    if movement:
+        s.metadata.movementName = movement
     if composer:
         s.metadata.composer = composer
     return s
@@ -45,7 +50,10 @@ def original_score(ex: Excerpt) -> stream.Score:
     return s
 
 
-def written_part(concert_part: stream.Part, roster: Roster, pid: str, title: str) -> stream.Score:
+def written_part(concert_part: stream.Part, roster: Roster, pid: str, title: str,
+                 composer: str | None = None, heading: str | None = None) -> stream.Score:
+    """One player's part in written pitch. Metadata: work-title = the piece, movement-title =
+    movement and bars + the player's label, composer = the real composer."""
     player = roster.player(pid)
     spec = ins.get(player.instrument)
     p = copy.deepcopy(concert_part)
@@ -62,4 +70,4 @@ def written_part(concert_part: stream.Part, roster: Roster, pid: str, title: str
         n.style.color = None
     sc = stream.Score()
     sc.insert(0, w)
-    return with_title(sc, f"{title} — {player.label}")
+    return with_title(sc, title, composer, f"{heading} — {player.label}" if heading else player.label)

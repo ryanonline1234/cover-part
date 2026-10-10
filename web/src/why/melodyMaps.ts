@@ -1,5 +1,6 @@
 // GENERATED copy of corpus/manifest.json -> excerpts[].melody_map (the manifest lives outside the web root).
-// The reference melody maps were written by reading the notes, before any plan existed.
+// The reference melody maps were written by a separate Claude Code agent reading the notes, before any plan
+// existed; no musician has checked them (the why page says so wherever a map is used: copy.ts REFERENCE_MAP).
 // Regenerate if the manifest changes; the why-page check script compares this file to the manifest.
 export interface MelodySpan {
   part: string;

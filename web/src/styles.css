@@ -155,6 +155,25 @@ select {
   }
 }
 
+/* The why page's column is wider than the tool's; its header and footer line up with it. */
+.app--why .site-header,
+.app--why .colophon {
+  max-width: 1240px;
+}
+
+/* A page that crashed: the header stays, with a plain message and a reload. */
+.page-error {
+  display: grid;
+  gap: 0.7rem;
+  justify-items: start;
+  margin-top: 2.5rem;
+}
+
+.page-error-detail {
+  font-size: 0.84rem;
+  color: var(--ink-3);
+}
+
 .field {
   display: grid;
   gap: 0.2rem;

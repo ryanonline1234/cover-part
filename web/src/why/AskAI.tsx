@@ -3,6 +3,7 @@ import type { Side } from "../audio";
 import type { Badness, Revision } from "../types";
 import { section } from "./copy";
 import { useABPlayer, useComparison, useNear, useResult } from "./hooks";
+import { verdict } from "../Scoreboard";
 import { BASS_MISSING_WEIGHT, mean1, shortPiece, totalProblems } from "./metrics";
 import { SectionShell, type Values } from "./Prose";
 import { PlayButton, Switch } from "./Transport";
@@ -79,7 +80,7 @@ export function AskAI() {
   const step = steps[Math.min(i, Math.max(0, steps.length - 1))];
   const maxTotal = Math.max(1, ...steps.map((s) => s.total ?? 0), gTotal ?? 0);
 
-  const values: Values = { ai_id: aiId, g_id: gId };
+  const values: Values = { ai_id: aiId, g_id: gId, bass_w: BASS_MISSING_WEIGHT };
   if (c?.first_plan && c.final) {
     const revs = c.revisions ?? [];
     Object.assign(values, {
@@ -95,8 +96,16 @@ export function AskAI() {
     });
   }
   if (gTotal !== null) values.g_total = gTotal;
+  const fuMetric = cmp?.metrics.find((m) => m.key === "first_unfit");
   if (cmp) {
+    // Same rule as the scoreboard's summary (within one pair, or the same mean as shown, is about even).
+    const v = fuMetric && cmp.totals.first_unfit ? verdict(cmp, fuMetric) : null;
+    const fu = cmp.totals.first_unfit;
     Object.assign(values, {
+      fu_cmp: v === "even" ? "about even" : v === "ai" ? "the AI ahead" : v === "base" ? "the rule-based plan ahead" : null,
+      fu_ai_better: fu?.ai_better,
+      fu_g_better: fu?.greedy_better,
+      fu_tie: fu?.tie,
       fu_ai: mean1(cmp.totals.first_unfit?.ai_mean),
       fu_g: mean1(cmp.totals.first_unfit?.greedy_mean),
       fold_ai: mean1(cmp.totals.folded?.ai_mean),

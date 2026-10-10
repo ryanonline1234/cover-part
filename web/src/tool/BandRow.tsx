@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import type { Roster } from "../types";
 import { INSTRUMENTS, INSTRUMENT_NAME, LEVELS, MAX_PLAYERS, bandFromRoster, newPlayer, type BandPlayer, type Level } from "./band";
 
@@ -19,6 +20,36 @@ function presetName(label: string): [string, string | null] {
 export function BandRow({ band, onChange, presets, presetId }: Props) {
   const edit = (key: number, patch: Partial<BandPlayer>) => onChange(band.map((p) => (p.key === key ? { ...p, ...patch } : p)));
   const last = band[band.length - 1];
+  const listRef = useRef<HTMLOListElement>(null);
+  const noteRef = useRef<HTMLParagraphElement>(null);
+  /** Where keyboard focus goes after the control that had it disappears (Remove, the 8th Add). */
+  const focusNext = useRef<{ kind: "stand"; index: number } | { kind: "note" } | null>(null);
+
+  useEffect(() => {
+    const want = focusNext.current;
+    if (!want) return;
+    focusNext.current = null;
+    if (want.kind === "note") {
+      noteRef.current?.focus();
+      return;
+    }
+    // The player who moved up into the removed stand, else "+ Add player" (or the last stand).
+    const stands = listRef.current?.querySelectorAll<HTMLElement>(".stand:not(.stand--add)") ?? [];
+    const target =
+      stands[want.index]?.querySelector<HTMLElement>("select") ??
+      listRef.current?.querySelector<HTMLElement>(".stand-add") ??
+      stands[stands.length - 1]?.querySelector<HTMLElement>("select");
+    target?.focus();
+  }, [band]);
+
+  const remove = (key: number, index: number) => {
+    focusNext.current = { kind: "stand", index };
+    onChange(band.filter((x) => x.key !== key));
+  };
+  const add = () => {
+    if (band.length + 1 >= MAX_PLAYERS) focusNext.current = { kind: "note" };
+    onChange([...band, newPlayer(last?.instrument ?? "flute", last?.level ?? "intermediate")]);
+  };
 
   return (
     <div className="band">
@@ -42,7 +73,7 @@ export function BandRow({ band, onChange, presets, presetId }: Props) {
         })}
       </div>
 
-      <ol className="stands">
+      <ol className="stands" ref={listRef}>
         {band.map((p, i) => (
           <li key={p.key} className="stand">
             <span className="stand-n" aria-hidden="true">
@@ -83,7 +114,7 @@ export function BandRow({ band, onChange, presets, presetId }: Props) {
               type="button"
               className="stand-remove"
               disabled={band.length <= 1}
-              onClick={() => onChange(band.filter((x) => x.key !== p.key))}
+              onClick={() => remove(p.key, i)}
               aria-label={`Remove player ${i + 1} (${p.name.trim() || INSTRUMENT_NAME.get(p.instrument)})`}
               title="Remove this player"
             >
@@ -95,17 +126,17 @@ export function BandRow({ band, onChange, presets, presetId }: Props) {
         ))}
         {band.length < MAX_PLAYERS && (
           <li className="stand stand--add">
-            <button
-              type="button"
-              className="stand-add"
-              onClick={() => onChange([...band, newPlayer(last?.instrument ?? "flute", last?.level ?? "intermediate")])}
-            >
+            <button type="button" className="stand-add" onClick={add}>
               + Add player
             </button>
           </li>
         )}
       </ol>
-      {band.length >= MAX_PLAYERS && <p className="band-note">Eight players is the most the engine arranges for.</p>}
+      {band.length >= MAX_PLAYERS && (
+        <p className="band-note" ref={noteRef} tabIndex={-1}>
+          {MAX_PLAYERS} players is the most the engine arranges for.
+        </p>
+      )}
     </div>
   );
 }

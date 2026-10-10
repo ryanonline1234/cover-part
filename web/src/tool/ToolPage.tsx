@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
-import { ABPlayer, type Side } from "../audio";
+import { ABPlayer, parseMidi, type Side } from "../audio";
 import { Checks } from "../Checks";
 import { ServiceUnavailable, arrangeLive, loadIndex, loadResult, presetRef } from "../data";
 import { LineMap } from "../LineMap";
@@ -16,6 +16,7 @@ import { MusicPicker, shortWork, surname } from "./MusicPicker";
 import { PartCard, type PlayMode } from "./PartCard";
 import { playerTracks, usePlayerVersion } from "./parts";
 import { PrintParts } from "./PrintParts";
+import { flagsOf } from "./signals";
 import "./tool.css";
 
 /** A result on the desk, and what it was made for. */
@@ -29,8 +30,48 @@ interface Shown {
 
 type Live =
   | { status: "idle" }
-  | { status: "running"; started: number }
+  /** key: what the run is for (piece|custom|signature); a run for something no longer wanted is cancelled. */
+  | { status: "running"; started: number; key: string }
   | { status: "error"; message: string; unreachable: boolean };
+
+/** Facts about a piece learned from any result file loaded for it (the index doesn't carry them). */
+interface PieceFacts {
+  /** Lines (source parts) in the excerpt. */
+  lines: number;
+  /** Length of the original excerpt, from its MIDI, in seconds (null if it couldn't be read). */
+  seconds: number | null;
+}
+
+function factsOf(r: ArrangeResult): PieceFacts {
+  let seconds: number | null = null;
+  try {
+    seconds = parseMidi(r.midi.original).duration;
+  } catch {
+    seconds = null;
+  }
+  return { lines: r.source_parts.length, seconds };
+}
+
+/** What differs between the parts on the desk and what's wanted (keys: piece|preset|planner or piece|custom|signature). */
+function changedText(shownKey: string | null, wantKey: string): string {
+  if (!shownKey) return "";
+  const [sp, sb, sx] = shownKey.split("|");
+  const [wp, wb, wx] = wantKey.split("|");
+  const music = sp !== wp;
+  const band = sb !== wb || (sb === "custom" && sx !== wx);
+  if (music && band) return "The music and the band have changed.";
+  if (music) return "The music has changed.";
+  if (band) return "The band has changed.";
+  return "";
+}
+
+/** "about 1 min 10 s" (rounded to 5 s), for a length in seconds. */
+export function aboutDuration(sec: number): string {
+  const s = Math.max(5, Math.round(sec / 5) * 5);
+  const m = Math.floor(s / 60);
+  const r = s % 60;
+  return `about ${m ? `${m} min` : ""}${m && r ? " " : ""}${r ? `${r} s` : ""}`;
+}
 
 type View = "score" | "decided" | null;
 
@@ -45,8 +86,10 @@ interface Props {
   onHash: (hash: string) => void;
 }
 
-export const CUSTOM_NOTE =
-  "Custom bands get the rule-based plan, checked live. AI plans are precomputed for the 4 preset bands; live AI for custom bands needs an API key, which isn't enabled.";
+/** Shown with any band that isn't a preset. presetCount comes from index.json. */
+export function customNote(presetCount: number): string {
+  return `Your band gets the rule-based arrangement, made and checked live. The AI arranger has only been run for the ${presetCount} preset ${presetCount === 1 ? "band" : "bands"}.`;
+}
 
 /** "a:b,c" kept readable in the hash: commas and colons are legal there. */
 function hashValue(s: string): string {
@@ -71,11 +114,18 @@ export default function ToolPage({ query, nav, active, onHash }: Props) {
   const [printOnly, setPrintOnly] = useState<string | null>(null);
   const [printReady, setPrintReady] = useState(false);
   const [printWaiting, setPrintWaiting] = useState(false);
+  const [facts, setFacts] = useState<ReadonlyMap<string, PieceFacts>>(() => new Map());
+  /** Screen-reader announcement: only state changes (started, done, failed), never the running clock. */
+  const [announce, setAnnounce] = useState("");
 
   const written = useRef<string | null>(null);
   const autoLive = useRef(false);
   const seq = useRef(0);
   const abort = useRef<AbortController | null>(null);
+  /** Set when the user pressed Arrange: focus moves to the parts when that run ends. */
+  const focusParts = useRef(false);
+  const partsHeading = useRef<HTMLHeadingElement>(null);
+  const arrangeBtn = useRef<HTMLButtonElement>(null);
 
   const presets = useMemo(() => index?.rosters ?? [], [index]);
   const match = useMemo(() => matchPreset(band, presets), [band, presets]);
@@ -96,6 +146,12 @@ export default function ToolPage({ query, nav, active, onHash }: Props) {
     if (!index || !index.pieces.length) return;
     if (query === written.current) return; // our own write coming back
     const q = new URLSearchParams(query);
+    if (band.length && !q.get("piece") && !q.get("band") && !q.get("roster")) {
+      // A bare "#/" (a link back to the tool) keeps the session; only a link that names a piece or a
+      // band replaces it. Put the session's own URL back.
+      if (written.current && active) window.history.replaceState(null, "", `#/?${written.current}`);
+      return;
+    }
     const p = index.pieces.find((x) => x.id === q.get("piece")) ?? index.pieces[0];
     // "roster" is accepted too (older links and the why page's scoreboard use it).
     const b = decodeBand(q.get("band") ?? q.get("roster"), presets) ?? (presets[0] ? bandFromRoster(presets[0]) : []);
@@ -121,6 +177,7 @@ export default function ToolPage({ query, nav, active, onHash }: Props) {
       abort.current?.abort();
       const n = ++seq.current;
       setLive({ status: "idle" });
+      setLoadError(null);
       if (!ref) {
         setLoadError("No precomputed result for this band and piece.");
         return;
@@ -150,7 +207,9 @@ export default function ToolPage({ query, nav, active, onHash }: Props) {
     const started = Date.now();
     setNow(started);
     setLoading(false);
-    setLive({ status: "running", started });
+    setLoadError(null);
+    setLive({ status: "running", started, key });
+    setAnnounce("Arranging this band. This can take a few seconds.");
     arrangeLive(
       {
         piece_id: pieceId,
@@ -167,18 +226,22 @@ export default function ToolPage({ query, nav, active, onHash }: Props) {
         if (n !== seq.current) return;
         setShown({ result, key, source: "live", seconds: Math.max(1, Math.round((Date.now() - started) / 1000)) });
         setLive({ status: "idle" });
+        const flags = flagsOf(result);
+        setAnnounce(
+          `Parts are ready for this band.${flags.length ? ` The checker flags: ${flags.map((f) => f.text).join("; ")}.` : ""}`,
+        );
       })
       .catch((e: unknown) => {
         if (n !== seq.current) return;
         if (ctl.signal.aborted) {
           setLive({ status: "idle" });
+          setAnnounce("Arranging cancelled.");
+          focusParts.current = false;
           return;
         }
-        setLive({
-          status: "error",
-          message: e instanceof Error ? e.message : String(e),
-          unreachable: e instanceof ServiceUnavailable,
-        });
+        const message = e instanceof Error ? e.message : String(e);
+        setLive({ status: "error", message, unreachable: e instanceof ServiceUnavailable });
+        setAnnounce(`Couldn't arrange this band. ${message}`);
       })
       .finally(() => {
         if (abort.current === ctl) abort.current = null;
@@ -189,6 +252,16 @@ export default function ToolPage({ query, nav, active, onHash }: Props) {
   // "Arrange for this band", except once when it arrives in a shared link.
   useEffect(() => {
     if (!index || !pieceId || !band.length) return;
+    // What's wanted changed: an error or a run for the old piece/band no longer applies (a run that is
+    // still for this band, e.g. after typing a name, keeps going).
+    if (live.status === "running" && live.key !== wantKey) {
+      abort.current?.abort();
+      seq.current++;
+      focusParts.current = false;
+      setLive({ status: "idle" });
+      setAnnounce("The music or the band changed, so that arrangement was cancelled.");
+    } else if (live.status === "error") setLive({ status: "idle" });
+    setLoadError(null);
     if (match) {
       autoLive.current = false;
       if (shown?.key !== wantKey) loadPreset(match.id, planner, wantKey);
@@ -197,6 +270,40 @@ export default function ToolPage({ query, nav, active, onHash }: Props) {
       if (shown?.key !== wantKey) runLive();
     }
   }, [index, wantKey]); // only when what's wanted changes, not on every new result
+
+  // Learn the line count and length of each piece from results as they load. A custom band on a piece
+  // with no result loaded yet fetches one precomputed file for it (cached), so the band-size note and
+  // the length are known before arranging.
+  useEffect(() => {
+    if (!shown) return;
+    const id = shown.result.piece.id;
+    setFacts((f) => (f.has(id) ? f : new Map(f).set(id, factsOf(shown.result))));
+  }, [shown]);
+  useEffect(() => {
+    if (!index || !pieceId || facts.has(pieceId) || match) return;
+    const ref = index.pieces.find((p) => p.id === pieceId)?.results.find((r) => r.planner !== "as_written");
+    if (!ref) return;
+    let alive = true;
+    loadResult(ref.result_id)
+      .then((r) => alive && setFacts((f) => (f.has(pieceId) ? f : new Map(f).set(pieceId, factsOf(r)))))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [index, pieceId, facts, match]);
+
+  // When a run the user started ends, move focus to the parts (the Arrange button goes away).
+  useEffect(() => {
+    if (running || !focusParts.current) return;
+    if (live.status === "error") {
+      focusParts.current = false;
+      return;
+    }
+    if (upToDate) {
+      focusParts.current = false;
+      partsHeading.current?.focus({ preventScroll: true });
+    }
+  }, [running, upToDate, live.status]);
 
   // The other planner's precomputed result, for "How it decided" (presets only).
   useEffect(() => {
@@ -315,11 +422,14 @@ export default function ToolPage({ query, nav, active, onHash }: Props) {
     const p = result.roster.players.find((x) => x.id === id);
     const xml = result.musicxml.parts[id];
     if (!p || !xml) return;
-    const work = `${surname(result.piece.composer)} ${shortWork(result.piece.title)} ${result.piece.movement?.split(/[.\s]/)[0] ?? ""}`;
-    downloadText(`${slug(work)}-${slug(names.get(id) || p.label)}.musicxml`, xml);
+    // Unique per piece and player: two players with the same label ("Violin") get different files.
+    const stand = result.roster.players.indexOf(p) + 1;
+    downloadText(`${slug(result.piece.id)}-${stand}-${slug(p.id)}-${slug(names.get(id) || p.label)}.musicxml`, xml);
   };
 
   const arrange = () => {
+    if (running) return; // aria-disabled, not disabled: the button keeps focus while it runs
+    focusParts.current = true;
     if (match) loadPreset(match.id, planner, wantKey);
     else runLive();
   };
@@ -331,6 +441,10 @@ export default function ToolPage({ query, nav, active, onHash }: Props) {
     match && piece ? piece.results.filter((r) => r.roster_id === match.id).map((r) => r.planner) : [],
   );
   const effectivePlanner: Planner = match ? planner : "greedy";
+  const pieceFacts = facts.get(pieceId) ?? null;
+  const shownFacts = result ? facts.get(result.piece.id) ?? null : null;
+  const flags = result && upToDate ? flagsOf(result, names) : [];
+  const presetCount = presets.length;
 
   if (indexError) {
     return (
@@ -350,6 +464,13 @@ export default function ToolPage({ query, nav, active, onHash }: Props) {
   return (
     <main className="tool" data-print={printOnly ?? "all"}>
       <div className="tool-screen">
+        {/* What this is, in one breath, at every width (the header tagline hides on phones). */}
+        <p className="tool-intro">
+          Pick the music and the players you have, and get one printable part per player. An AI decided who covers each line
+          for the {presetCount} preset bands; any other band gets a rule-based plan, made live. Code checks every note against
+          each player's range. <a href="#/why">Why it works this way&nbsp;→</a>
+        </p>
+
         {/* A. Music */}
         <section className="step" aria-labelledby="h-music">
           <h2 className="step-title" id="h-music">
@@ -358,7 +479,16 @@ export default function ToolPage({ query, nav, active, onHash }: Props) {
             </span>
             Music
           </h2>
-          <MusicPicker pieces={index.pieces} value={pieceId} onChange={setPieceId} />
+          <p className="step-note">
+            The library is {index.pieces.length} public-domain excerpts from string quartets. Bringing your own MusicXML isn't
+            on the site yet.
+          </p>
+          <MusicPicker
+            pieces={index.pieces}
+            value={pieceId}
+            onChange={setPieceId}
+            length={pieceFacts?.seconds != null ? aboutDuration(pieceFacts.seconds) : null}
+          />
         </section>
 
         {/* B. Band */}
@@ -373,19 +503,43 @@ export default function ToolPage({ query, nav, active, onHash }: Props) {
             </span>
           </h2>
           <BandRow band={band} onChange={setBand} presets={presets} presetId={match?.id ?? null} />
+          {pieceFacts && band.length > pieceFacts.lines && (!upToDate || running) && (
+            <p className="band-warn">
+              This piece has {pieceFacts.lines} lines and your band has {band.length} players, so not everyone gets a line of their
+              own: extra players double the tune or the bass where it fits them. After arranging, the checker names anyone still
+              left with little or nothing to play.
+            </p>
+          )}
           <div className="arrange-bar">
-            {/* The action shows only when there is something to do; an up-to-date band gets a status line. */}
+            {/* The action shows only when there is something to do; an up-to-date band gets a status line. It stays
+                mounted (aria-disabled) while it runs, so keyboard focus isn't lost. */}
             {(!upToDate || running) && (
-              <button type="button" className="btn-primary" onClick={arrange} disabled={running || !band.length}>
+              <button
+                type="button"
+                ref={arrangeBtn}
+                className="btn-primary"
+                onClick={arrange}
+                disabled={!band.length}
+                aria-disabled={running || undefined}
+              >
                 {running ? "Arranging…" : "Arrange for this band"}
               </button>
             )}
             {running && (
-              <button type="button" className="btn btn--quiet" onClick={() => abort.current?.abort()}>
+              <button
+                type="button"
+                className="btn btn--quiet"
+                onClick={() => {
+                  abort.current?.abort();
+                  // Cancel goes away with the run; keep focus on the Arrange button that stays.
+                  window.requestAnimationFrame(() => arrangeBtn.current?.focus());
+                }}
+              >
                 Cancel
               </button>
             )}
-            <p className="arrange-status" aria-live="polite">
+            {/* Visible status. Not a live region: the clock would be read out every second. */}
+            <p className="arrange-status">
               {running && (
                 <>
                   <span className="clock">{elapsed}&nbsp;s</span> Making the rule-based plan, then checking every note against
@@ -395,25 +549,43 @@ export default function ToolPage({ query, nav, active, onHash }: Props) {
               {!running && live.status === "error" && (
                 <span className="arrange-error">
                   {live.unreachable ? `Couldn't arrange this band: ${live.message}` : live.message}{" "}
-                  {shown ? "The parts below are from the last arrangement." : "Try again, or pick one of the four preset bands (precomputed)."}
+                  {shown
+                    ? "The parts below are from the last arrangement."
+                    : `Try again, or pick one of the ${presetCount} preset bands (precomputed).`}
                 </span>
               )}
-              {!running && live.status !== "error" && !upToDate && !match && "This band has changed. Arrange to make its parts."}
+              {!running && live.status !== "error" && !upToDate && !match && (
+                <>
+                  {changedText(shown?.key ?? null, wantKey)} Arrange to make the parts for this band.
+                </>
+              )}
               {!running && live.status !== "error" && !upToDate && match && loading && "Opening the precomputed parts…"}
               {!running && live.status !== "error" && upToDate && (
-                <span className="arrange-done">
+                <span className={`arrange-done ${flags.length ? "has-flags" : ""}`}>
                   Parts below are for this band.{" "}
-                  {match ? "It's a preset band, so they were precomputed with both plans." : `Arranged and checked live in ${shown?.seconds} s.`}{" "}
-                  Change a player to arrange for a different band.
+                  {match
+                    ? "It's a preset band, so they were precomputed with both plans."
+                    : `Arranged live in ${shown?.seconds} s by the rule-based plan, then checked.`}{" "}
+                  {flags.length > 0 ? (
+                    <>
+                      <strong>The checker flags:</strong> {flags.map((f) => f.text).join("; ")}. See the numbers below and{" "}
+                      <em>How it decided</em>.
+                    </>
+                  ) : (
+                    "Change a player to arrange for a different band."
+                  )}
                 </span>
               )}
+            </p>
+            <p className="sr-only" role="status" aria-live="polite">
+              {announce}
             </p>
           </div>
         </section>
 
         {/* C. Parts */}
         <section className="step step--parts" aria-labelledby="h-parts">
-          <h2 className="step-title" id="h-parts">
+          <h2 className="step-title" id="h-parts" ref={partsHeading} tabIndex={-1}>
             <span className="mark" aria-hidden="true">
               C
             </span>
@@ -459,7 +631,7 @@ export default function ToolPage({ query, nav, active, onHash }: Props) {
               </p>
             )}
           </div>
-          {(!match || shown?.source === "live") && <p className="custom-note">{CUSTOM_NOTE}</p>}
+          {(!match || shown?.source === "live") && <p className="custom-note">{customNote(presetCount)}</p>}
 
           {loadError && <p className="notice notice--error">{loadError}</p>}
 
@@ -473,7 +645,7 @@ export default function ToolPage({ query, nav, active, onHash }: Props) {
                   {match ? "" : "Press Arrange for this band to update them."}
                 </p>
               )}
-              <CheckLine result={result} />
+              <CheckLine result={result} names={names} />
 
               <div className="folder-head">
                 <div className="folder-title">
@@ -482,8 +654,9 @@ export default function ToolPage({ query, nav, active, onHash }: Props) {
                     {shownPiece.movement ? <span className="folder-mvt">, {shownPiece.movement}</span> : null}
                   </p>
                   <p className="folder-meta">
-                    {mm(shownPiece.measures[0], shownPiece.measures[1])} · for {bandSummary(result.roster.players)} ·{" "}
-                    {PLANNER_LABEL[result.planner]}
+                    {mm(shownPiece.measures[0], shownPiece.measures[1])}
+                    {shownFacts?.seconds != null ? `, ${aboutDuration(shownFacts.seconds)}` : ""} · for{" "}
+                    {bandSummary(result.roster.players)} · {PLANNER_LABEL[result.planner]}
                   </p>
                 </div>
                 <button type="button" className="btn-print" onClick={() => print(null)} disabled={printWaiting}>

@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { pct } from "../music";
 import type { ArrangeResult } from "../types";
+import { BASS_WARN, MELODY_WARN, SITTING_OUT, activityText, leftOutSpans, sittingOut, underBass } from "./signals";
 
 interface Chip {
   key: string;
@@ -10,14 +11,21 @@ interface Chip {
   def: string;
   /** true when the number is the ideal one (0 left out, 100%, ...): drawn with a solid mark. */
   clean: boolean;
+  /** true when the number is bad enough to look at (thresholds in signals.ts): drawn as a warning. */
+  warn: boolean;
 }
 
-function chipsFor(r: ArrangeResult): Chip[] {
+function chipsFor(r: ArrangeResult, names?: Map<string, string>): Chip[] {
   const c = r.checks;
   const folds = c.final?.folded ?? c.notes_folded;
   const melody = c.essential_coverage.melody;
   const bass = c.essential_coverage.bass;
+  const under = underBass(r);
   const left = c.measures_dropped;
+  const spans = leftOutSpans(r);
+  const shownSpans = spans.slice(0, 3).map((s) => `${s.line} ${s.where}`);
+  if (spans.length > 3) shownSpans.push(`${spans.length - 3} more ${spans.length - 3 === 1 ? "line" : "lines"}`);
+  const idle = sittingOut(r, names);
   return [
     {
       key: "playable",
@@ -26,33 +34,48 @@ function chipsFor(r: ArrangeResult): Chip[] {
       sub: `of ${c.notes_total} notes · ${folds} single-note ${folds === 1 ? "fold" : "folds"}`,
       def: "Notes outside a player's range for their level, after repair, of every note checked. A fold is a single note moved an octave so it fits.",
       clean: c.notes_out_of_range === 0,
+      warn: c.notes_out_of_range > 0,
     },
     {
       key: "melody",
       label: "Melody kept",
       value: melody === null ? "no map" : pct(melody),
-      def: "Share of the reference melody's bars, mapped from the notes before any plan existed, that some player plays.",
+      def: `Share of the reference melody's bars, mapped from the notes before any plan existed, that some player plays. Flagged below ${pct(MELODY_WARN)}.`,
       clean: melody === 1,
+      warn: melody !== null && melody < MELODY_WARN,
     },
     {
       key: "bass",
       label: "Bass at the bottom",
       value: pct(bass),
-      def: "Share of the time the band's lowest note is the same pitch, in any octave, as the original's lowest note.",
-      clean: bass === 1,
+      sub: under === null ? undefined : `${under} ${under === 1 ? "note" : "notes"} under the bass`,
+      def: `Share of the time the band's lowest note is the same pitch, in any octave, as the original's lowest note. Below it: notes another player sounds under the line that carries the bass. Flagged below ${pct(BASS_WARN)}, or when any note sounds under the bass.`,
+      clean: bass === 1 && !under,
+      warn: (bass !== null && bass < BASS_WARN) || (under ?? 0) > 0,
     },
     {
       key: "left",
-      label: "Bars left out",
+      label: "Line-bars left out",
       value: left === undefined || left === null ? "n/a" : String(left),
-      def: "Bars where a line of the original has notes but no player plays it.",
+      sub: left ? shownSpans.join(" · ") : undefined,
+      def: "Each line of the original is counted on its own: bars where that line has notes but no player plays it, added up across the lines. Two lines missing in the same bar count twice.",
       clean: left === 0,
+      warn: false,
+    },
+    {
+      key: "sitting",
+      label: "Sitting out",
+      value: idle.length === 0 ? "nobody" : `${idle.length} ${idle.length === 1 ? "player" : "players"}`,
+      sub: idle.length ? idle.map(activityText).join(" · ") : undefined,
+      def: `Players who have a line to play in fewer than ${pct(SITTING_OUT)} of the excerpt's bars. More players than the piece has lines leaves someone with little or nothing to play.`,
+      clean: idle.length === 0,
+      warn: idle.length > 0,
     },
   ];
 }
 
-/** Four numbers a director checks first, each with its definition on hover, focus or tap. */
-export function CheckLine({ result }: { result: ArrangeResult }) {
+/** The numbers a director checks first, each with its definition on hover, focus or tap. */
+export function CheckLine({ result, names }: { result: ArrangeResult; names?: Map<string, string> }) {
   const [open, setOpen] = useState<string | null>(null);
   const base = useId();
   const rootRef = useRef<HTMLUListElement>(null);
@@ -74,10 +97,10 @@ export function CheckLine({ result }: { result: ArrangeResult }) {
 
   return (
     <ul className="checkline" ref={rootRef} aria-label="What the checker measured">
-      {chipsFor(result).map((c) => {
+      {chipsFor(result, names).map((c) => {
         const defId = `${base}-${c.key}`;
         return (
-          <li key={c.key} className={`check ${c.clean ? "is-clean" : ""} ${open === c.key ? "is-open" : ""}`}>
+          <li key={c.key} className={`check check--${c.key} ${c.clean ? "is-clean" : ""} ${c.warn ? "is-warn" : ""} ${open === c.key ? "is-open" : ""}`}>
             <button
               type="button"
               className="check-btn"
@@ -86,7 +109,10 @@ export function CheckLine({ result }: { result: ArrangeResult }) {
               onClick={() => setOpen((o) => (o === c.key ? null : c.key))}
             >
               <span className="check-label">{c.label}</span>
-              <span className="check-value">{c.value}</span>
+              <span className="check-value">
+                {c.warn && <span className="sr-only">Check this: </span>}
+                {c.value}
+              </span>
               {c.sub && <span className="check-sub">{c.sub}</span>}
             </button>
             <span className="check-def" id={defId} role="tooltip">

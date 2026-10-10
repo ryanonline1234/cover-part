@@ -25,7 +25,7 @@ export function SimpleRule({ index }: { index: DemoIndex | null }) {
   const player = useABPlayer(base?.midi.original, base?.midi.original, base?.musicxml.original, "original");
   const partName = (manifestName: string) => base?.source_parts.find((s) => s.id === PART_ALIAS[manifestName])?.name ?? manifestName;
 
-  const values: Values = { ai_id: aiId, g_id: gId };
+  const values: Values = { ai_id: aiId, g_id: gId, n_bands: index?.rosters.length };
   if (hand) Object.assign(values, { handoff_from: partName(hand.from), handoff_to: partName(hand.to).replace(/^Violoncello$/, "the cello"), handoff_bar: hand.bar });
   if (ai.data && g.data) {
     const a = melodyIdentified(ai.data, map);
@@ -86,7 +86,8 @@ export function SimpleRule({ index }: { index: DemoIndex | null }) {
           <PlayButton player={player} label={`Play the original from bar ${startBar}`} fromMeasure={startBar - m0} id="simple-rule" />
           {hand && (
             <span className="why-cap">
-              Listen for bar {hand.bar}: the tune drops from {partName(hand.from)} to the cello, and {partName("Violin I")} keeps playing above it.
+              Listen for bar {hand.bar}: the tune drops from {partName(hand.from)} to {partName(hand.to).replace(/^Violoncello$/, "the cello")}, and{" "}
+              {partName("Violin I")} keeps playing above it.
             </span>
           )}
         </div>

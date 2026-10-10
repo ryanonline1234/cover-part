@@ -35,3 +35,15 @@ For the why page's first demo, the "as_written" planner models a director handin
 
 ## 2026-10-10 — Live engine on Vercel with a trimmed music21 wheel
 Stock music21 plus matplotlib comes to about 251 MB on Linux, over the roughly 225 MB at which Vercel's Python build stops bundling dependencies, and Vercel can't exclude files from installed packages. So api/_wheels holds a music21 10.5.0 wheel without the sample-score corpus and without matplotlib (rebuild with api/_tools/trim_music21_wheel.py). All engine tests pass without them. Function: 45.9 MB reported, cold request ~15 s, warm 5–9 s. The AI planner returns 403 in production (no API key). If a key is ever enabled, add anthropic to requirements.txt and raise maxDuration to 300 s: precomputed AI runs took 20–270 s.
+
+## 2026-10-10 — Review fixes: bars-with-no-bass counted correctly; baseline improved (and the AI's lead shrank)
+A four-lens review confirmed 17 problems. Two changed the evidence.
+- **The counting bug.** "Bars with no bass" counted bass-missing entries (one per line), not bars. That let the Var. II church-brass AI revision be kept although the stated rule would have rejected it (re-scored: 204 vs 42). It now counts distinct bars, and the AI results were re-run under the corrected gate.
+- **A better baseline.** The rule-based planner reshuffled players every 4 bars, made one-bar hand-offs, and left extra players idle in bands larger than the piece's 4 lines. That planner is both the comparison baseline and what custom bands get live, so we improved it:
+  - sticky lines (a line stays with its player while they fit it as well as anyone free);
+  - a last phrase shorter than 2 bars merges into the one before;
+  - idle players double the melody or bass at an octave that doesn't sound under the bass.
+  
+  This was done after seeing the results, and it made the baseline stronger, not weaker. The AI's hand-off advantage fell from 20/1/3 (1.9 vs 5.25) to 10/7/7 (2.2 vs 2.6). The README reports the new numbers.
+- **The merge trade-off.** It costs Var. II winds4 and no_viola 28 notes under the bass each in the baseline, against a one-bar line swap without it. We kept it because the review flagged one-bar hand-offs as unusable parts. Set MIN_LAST_PHRASE = 1 in planner_greedy.py to revert; that's a ~3-minute rule-based rebuild.
+- **Run-to-run variation.** Re-running the AI changed some results substantially: Var. II winds4 went from 0 to 68 notes under the bass, and Dvořák Lento winds4 now has 91 because the corrected gate rejected a voicing revision. Each published AI result is a single run, and the README says so.

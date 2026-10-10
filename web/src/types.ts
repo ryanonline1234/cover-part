@@ -56,6 +56,10 @@ export interface Assignment {
   octave_shift: number;
   chord_policy: string;
   reason: string;
+  /** "doubling": an extra player plays along with the line's own player (rule-based plan, larger bands). */
+  role?: string;
+  /** What a doubling doubles: "melody" or "bass". */
+  doubles?: string;
 }
 
 export interface Dropped {
@@ -101,6 +105,15 @@ export interface Checks {
    *  bass: share of sounding time the cover's lowest pitch class matches the original's. */
   essential_coverage: { melody: number | null; bass: number | null };
   violations?: Violation[];
+  /** Per player: bars with something to play, of the excerpt's bars (engine >= the sitting-out check).
+   *  Older results lack it; the tool then counts bars from plan.assignments. */
+  player_activity?: PlayerActivity[];
+}
+
+export interface PlayerActivity {
+  player: string;
+  bars_played: number;
+  bars_total: number;
 }
 
 /** Problems measured on a plan after the deterministic repairs (phrase octave repair, then folds). */

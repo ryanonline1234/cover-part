@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import type { ABPlayer } from "../audio";
 import type { ArrangeResult, SourcePart } from "../types";
+import { REFERENCE_MAP } from "./copy";
 import type { MelodySpan } from "./melodyMaps";
 import { labeledByBar, melodyIdentified, pct, tuneByBar } from "./metrics";
 
@@ -103,7 +104,7 @@ export function MelodyTimeline({
         <div className="why-tl-row is-ref" data-row="reference">
           <span className="why-tl-label">
             Where the tune is
-            <small>reference map, written from the notes</small>
+            <small>{REFERENCE_MAP.label}</small>
           </span>
           <span className="why-tl-cells">
             {bars.map((b, i) => (
@@ -165,9 +166,10 @@ export function MelodyTimeline({
           <i aria-hidden="true" />
           wrong line labeled melody
         </span>
+        <span className="why-tl-key-ref" data-legend="reference-map">{REFERENCE_MAP.legend}</span>
       </div>
       <figcaption className="why-cap why-tl-live">
-        {caption ?? "Percentages: share of the reference melody's bars that the plan itself labels melody."}
+        {caption ?? "Percentages: share of the reference map's melody bars that the plan itself labels melody."}
       </figcaption>
     </figure>
   );

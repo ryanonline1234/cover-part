@@ -27,26 +27,30 @@ MusicXML ──► music21 summarizes each line, 4 bars at a time ──► Clau
 
 ## Does the AI beat a sensible heuristic?
 
-The baseline is deliberately not a strawman. It treats the highest line as the melody and the lowest as the bass, ranks the rest by activity, and gives each line to the free player whose range fits best, with octave shifts. Both planners go through the same checker and the same deterministic repairs. The AI additionally gets its revision loop: the checker sends back problems it can't repair, and a revision is kept only if it leaves fewer problems in total.
+The baseline is deliberately not a strawman. It treats the highest line as the melody and the lowest as the bass, ranks the rest by activity, and gives each line to the free player whose range fits best, with octave shifts. It keeps a line with the same player while that player still fits it, and any player left without a line doubles the melody or the bass. Custom bands on the site get this plan, live. Both planners go through the same checker and the same deterministic repairs. The AI additionally gets its revision loop: the checker sends back problems it can't repair, and a revision is kept only if it leaves fewer problems in total.
 
-Six CC0 excerpts × four rosters = 24 pairs (`python -m coverpart.report`, results in `web/public/demos/comparison.json`):
+Six CC0 excerpts × four rosters = 24 pairs (`python -m coverpart.report`, results in `web/public/demos/comparison.json`). Each AI result is a single run.
 
-| Metric | AI | Baseline | AI better / worse / tie |
+| Metric | AI | Rule-based baseline | AI better / worse / tie |
 |---|---|---|---|
-| Melody identified (bars of the reference melody the planner itself labels "melody") | **73%** | 54% | 15 / 0 / 9 |
-| Harmonic bass preserved (share of time the cover's lowest note has the original's bass pitch class) | **94.9%** | 88.2% | 18 / 1 / 5 |
-| Notes sounding under the bass line (measured per moment against the original; the original itself scores 0) | **5.4** | 13.1 | 16 / 2 / 6 |
-| Single notes octave-folded in the final parts | **0.9** | 3.9 | 9 / 1 / 14 |
-| Times a line changes hands between players | **1.9** | 5.25 | 20 / 1 / 3 |
-| Reference melody kept (melody maps written before any plan existed) | 97.8% | 96.5% | 2 / 2 / 20 |
-| First plan only, after the same octave repair: notes still needing a fold | 3.8 | 3.9 | 6 / 5 / 13 |
-| Bars of music left out | 6.9 | **4.2** | 0 / 9 / 15 |
+| Melody identified (bars of the reference melody the planner itself labels "melody") | 73% | 54% | 16 / 0 / 8 |
+| Reference melody kept | 99% | 96% | 3 / 2 / 19 |
+| Harmonic bass preserved (share of time the cover's lowest note has the original's bass pitch class) | 94% | 87% | 17 / 4 / 3 |
+| Notes sounding under the bass line (measured per moment against the original; the original itself scores 0) | 10.9 | 14.7 | 17 / 3 / 4 |
+| First plan only, after the same octave repair: notes still needing a fold | 3.6 | 4.2 | 6 / 5 / 13 |
+| Single notes octave-folded in the final parts | 1.3 | 4.2 | 9 / 2 / 13 |
+| Times a line changes hands between players | 2.2 | 2.6 | 10 / 7 / 7 |
+| Line-bars left out (one bar of one original line that nobody plays) | 6.6 | 4.2 | 0 / 7 / 17 |
 
 What this does and doesn't show:
-- The AI **finds the tune when it leaves the top line** in four of the five excerpts where that happens: 94–97% of the reference melody bars on the Dvořák Lento, Haydn Op. 20 and Hensel, against 50–69% for the baseline. It **fails on Haydn's Emperor Variation II**: in all four rosters it labels the busy violin countermelody as the tune, which is the baseline's mistake too. The cello's hymn is still kept, because a line doesn't need the "melody" label to be played.
-- The AI's advantage is in **voicing and continuity**: it keeps the bass at the bottom and keeps each line with one player. Its first drafts are no better than the baseline at fitting ranges. The revision loop is what removes the folded notes.
-- The AI **leaves out more music**: 59 of its 165 dropped bars are in the church-brass roster. There it rests the beginner trumpet on lines it can't play, while the baseline gives every line to someone and octave-folds the notes that don't fit. None of the bars it drops is a line it labeled melody or bass (most are lines it labeled inner, accompaniment, countermelody or doubling; 32 dropped segments carry no label). Whether that's the right call is a director's judgment.
-- These are code-checkable properties. **Whether a cover sounds good needs a musician's ear**, and that hasn't been measured yet.
+- **Melody.** The AI finds the tune when it leaves the top line in three of the five excerpts where that happens: 88–100% of the reference melody bars on the Dvořák Lento, Haydn Op. 20 and Hensel, against 50–69% for the baseline. In Dvořák I it finds about half (55% vs 45%). It **fails on Haydn's Emperor Variation II**: in all four rosters it labels the busy violin countermelody as the tune, which is the baseline's mistake too. The cello's hymn is still kept, because a line doesn't need the "melody" label to be played.
+- **The reference melody maps were written by a separate Claude Code agent reading the notes, before any plan existed. No musician has checked them.**
+- **Voicing.** The AI keeps the harmonic bass more often (17 of 24 pairs) and has fewer notes under the bass in 17 pairs. But a few of its plans are much worse: on the Dvořák Lento for winds it has 91 notes under the bass against the baseline's 15. Its average is pulled up by those cases.
+- **Continuity.** Against the current baseline, which keeps a line with one player while it fits, the AI's advantage on hand-offs is small (10 pairs better, 7 worse). An earlier, cruder baseline reshuffled players every 4 bars and made the AI look far better here. We improved the baseline after a review and report it as it is now.
+- **Range.** The AI's first drafts fit ranges about as well as the baseline's. The revision loop is what removes most of the folded notes.
+- The AI **leaves out more music** (6.6 vs 4.2 line-bars per pair). None of the bars it drops is a line it labeled melody or bass. Whether that's the right call is a director's judgment.
+- **Run-to-run variation.** The AI's plans vary between runs: Var. II for winds went from 0 notes under the bass in one run to 68 in the next. Each number above is one run.
+- These are code-checkable properties. **Whether a cover sounds good needs a musician's ear**, and that hasn't been measured.
 
 ## How this was built (AI use, stated plainly)
 

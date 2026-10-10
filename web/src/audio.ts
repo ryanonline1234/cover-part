@@ -167,6 +167,10 @@ export class ABPlayer {
   private timer: number | undefined;
   private listeners = new Set<Listener>();
   private disposed = false;
+  /** The start in progress (resuming the context, loading sounds), if any: play() is single-flight. */
+  private starting: Promise<void> | null = null;
+  /** Bumped by pause() and dispose(), so a start that is still loading gives up instead of playing. */
+  private startToken = 0;
 
   constructor(midi: { original: string; arranged: string }, side: Side = "arranged", bars: Bar[] = []) {
     this.tracks = { original: parseMidi(midi.original, bars), arranged: parseMidi(midi.arranged, bars) };
@@ -227,16 +231,47 @@ export class ABPlayer {
     }
   }
 
-  async play() {
-    if (this.playing) return;
-    const ctx = audioContext();
-    if (ctx.state !== "running") await ctx.resume();
-    if (!(await this.ensureLoaded()) || this.disposed) return;
-    if (this.pausedPos >= this.duration - 0.05) this.pausedPos = 0;
-    this.startAt(this.pausedPos);
+  /** true while play() is resuming the audio context or loading sounds, before notes start. */
+  get isStarting() {
+    return this.starting !== null;
+  }
+
+  /**
+   * Start playback from the paused position. Single-flight: a second call while the first is still
+   * loading returns the same promise instead of starting a second scheduler. pause() and dispose()
+   * cancel a start that hasn't begun playing yet.
+   */
+  play(): Promise<void> {
+    if (this.playing || this.disposed) return Promise.resolve();
+    if (this.starting) return this.starting;
+    const token = ++this.startToken;
+    const live = () => token === this.startToken && !this.disposed && !this.playing;
+    const run = (async () => {
+      const ctx = audioContext();
+      if (ctx.state !== "running") await ctx.resume();
+      if (!live()) return;
+      const ok = await this.ensureLoaded();
+      if (!ok || !live()) return;
+      if (this.pausedPos >= this.duration - 0.05) this.pausedPos = 0;
+      this.startAt(this.pausedPos);
+    })().finally(() => {
+      if (this.startToken === token) {
+        this.starting = null;
+        this.emit();
+      }
+    });
+    this.starting = run;
+    this.emit();
+    return run;
   }
 
   pause() {
+    if (this.starting) {
+      // Cancel a start that is still loading; it checks the token before it schedules anything.
+      this.startToken++;
+      this.starting = null;
+      this.emit();
+    }
     if (!this.playing) return;
     this.pausedPos = this.position;
     this.halt();
@@ -245,7 +280,7 @@ export class ABPlayer {
 
   toggle() {
     if (this.playing) this.pause();
-    else void this.play();
+    else void this.play(); // single-flight: a second press while sounds load doesn't start twice
   }
 
   seek(sec: number) {
@@ -287,12 +322,18 @@ export class ABPlayer {
 
   dispose() {
     this.disposed = true;
-    this.halt();
+    this.startToken++;
+    this.starting = null;
+    if (this.playing || this.timer !== undefined) this.halt();
     this.listeners.clear();
   }
 
   private startAt(pos: number) {
+    if (this.disposed) return;
     const ctx = audioContext();
+    // Never leave a scheduler running behind a new one: an orphaned interval can't be paused.
+    if (this.timer !== undefined) window.clearInterval(this.timer);
+    this.timer = undefined;
     this.anchorCtx = ctx.currentTime + 0.03;
     this.anchorPos = pos;
     this.cursor = 0;
@@ -306,10 +347,14 @@ export class ABPlayer {
     this.playing = false;
     if (this.timer !== undefined) window.clearInterval(this.timer);
     this.timer = undefined;
+    // The Soundfont instances are shared by every player on the page; only this player's notes are
+    // queued on them when it halts (one player sounds at a time).
     for (const inst of this.insts.values()) inst.stop();
   }
 
   private schedule() {
+    // A tick that outlives its player (paused, disposed) must not schedule notes or halt shared sounds.
+    if (!this.playing || this.disposed) return;
     const ctx = audioContext();
     const now = ctx.currentTime;
     const pos = this.anchorPos + (now - this.anchorCtx);

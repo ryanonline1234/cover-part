@@ -159,9 +159,13 @@ def test_octave_shift_keeps_spelling():
 
 
 def test_shifted_line_shows_needed_naturals():
+    # Hensel's viola line moved up an octave into a violin part, mm. 5-8 (what the rule-based plan
+    # did before it kept lines with their players): the B natural in m. 5 must still be printed.
     ex = _load("osq-hensel-eflat-iii-m1-16")
     roster = PRESETS["no_viola"]
-    plan = greedy_plan(ex, summarize(ex), roster)
+    plan = {"summary": "", "roles": [], "dropped": [], "assignments": [
+        {"source_part": "P3", "start_measure": 5, "end_measure": 8, "player": "vn2", "octave_shift": 1,
+         "chord_policy": "top", "reason": ""}]}
     exe = ex_mod.execute(plan, ex, roster)
     for m in exe.parts["vn2"].getElementsByClass(stream.Measure):
         if m.number == 5:
@@ -298,3 +302,176 @@ def test_as_written_counts_notes_as_engraved():
     n = res["checks"]["notes_out_of_range"]
     assert n > 0 and _x_noteheads(res["musicxml"]["arranged"]) == n
     assert sum(_x_noteheads(x) for x in res["musicxml"]["parts"].values()) == n
+
+
+# --- regressions for the 2026-10-10 site review (H1, F1, F2, F4) ----------------------------------
+from coverpart import planner_ai as _planner_ai
+from coverpart.arrange import handoffs, total_problems
+from coverpart.cli import piece_meta
+from coverpart.planner_greedy import _phrases
+
+re = _re
+
+
+def _bars(ranges: str) -> set[int]:
+    out = set()
+    for chunk in ranges.split(", "):
+        lo, _, hi = chunk.partition("-")
+        out |= set(range(int(lo), int(hi or lo) + 1))
+    return out
+
+
+def _asg(src, player, shift, policy="top", lo=1, hi=12):
+    return {"source_part": src, "start_measure": lo, "end_measure": hi, "player": player,
+            "octave_shift": shift, "chord_policy": policy, "reason": ""}
+
+
+def _drop(*srcs, lo=1, hi=12):
+    return [{"source_part": s, "start_measure": lo, "end_measure": hi, "reason": "t"} for s in srcs]
+
+
+def test_bass_missing_counts_bars_not_lines(ex):
+    # Both lower lines dropped: the bass is missing in bars where the cello is lowest AND in bars
+    # where the viola is lowest. The old count was the number of issue entries (one per bass line).
+    roster = Roster("t", "t", [Player("a", "violin", "advanced"), Player("b", "violin", "advanced")])
+    plan = {"summary": "", "roles": [], "dropped": _drop("P3", "P4"),
+            "assignments": [_asg("P1", "a", 0), _asg("P2", "b", 0)]}
+    res = arrange(ex, roster, "fixed", fixed_plan=plan, log=lambda m: None)
+    entries = [v for v in res["checks"]["voicing_issues"] if v["kind"] == "bass_missing"]
+    union = set().union(*(_bars(v["measures"]) for v in entries))
+    final = res["checks"]["final"]
+    assert final["bass_missing_bars"] == len(union) > len(entries)  # bars, not entries
+    assert sum(v["bars"] for v in entries) >= len(union)  # a bar missing two bass lines counts once
+    assert total_problems(final) == final["out_of_range"] + final["under_bass"] + 12 * len(union)
+
+
+class _FakeSession:
+    """Stands in for the AI planner: a first plan, then one scripted revision."""
+    plans: list = []
+
+    def __init__(self, *a, **k):
+        self.model_name = "fake"
+        self._plans = list(self.plans)
+
+    def first_plan(self):
+        return self._plans.pop(0)
+
+    def revise(self, plan, problems, kind):
+        return self._plans.pop(0)
+
+
+def test_revision_gate_weighs_every_bar_with_no_bass(ex, monkeypatch):
+    # First plan: bass kept, inner lines an octave down -> 13 notes under the bass (problems 13).
+    # "Revision": drop the bass line for all 12 bars -> 0 under, 12 bars with no bass. Counted per
+    # line it scored 12 < 13 and was kept; counted per bar it is 144 and must be rejected.
+    roster = Roster("t", "t", [Player(x, "cello", "advanced") for x in "abc"])
+    first = {"summary": "", "roles": [], "dropped": _drop("P1"),
+             "assignments": [_asg("P4", "a", 0, "bottom"), _asg("P3", "b", -1), _asg("P2", "c", -1)]}
+    no_bass = {"summary": "", "roles": [], "dropped": _drop("P1", "P4"),
+               "assignments": [_asg("P3", "b", 0), _asg("P2", "c", 0)]}
+    monkeypatch.setattr(_FakeSession, "plans", [first, no_bass])
+    monkeypatch.setattr(_planner_ai, "Session", _FakeSession)
+    res = arrange(ex, roster, "ai", log=lambda m: None)
+    rev = res["checks"]["revisions"][-1]
+    assert rev["kind"] == "voicing" and rev["total_before"] == 13
+    assert rev["after"]["bass_missing_bars"] == 12 and rev["total_after"] == 144
+    assert rev["kept"] is False
+    assert any(a["source_part"] == "P4" for a in res["plan"]["assignments"])
+
+
+def _band(spec: str) -> Roster:
+    lv = {"i": "intermediate", "b": "beginner", "a": "advanced"}
+    return Roster.from_json({"players": [{"id": f"p{k}", "instrument": s.split(":")[0], "level": lv[s.split(":")[1]]}
+                                         for k, s in enumerate(spec.split(","))]})
+
+
+def _doubling_bars(plan: dict, pid: str) -> set[int]:
+    return {m for a in plan["assignments"] if a["player"] == pid and a.get("role") == "doubling"
+            for m in range(a["start_measure"], a["end_measure"] + 1)}
+
+
+@pytest.mark.parametrize("eid,band", [
+    ("osq-haydn-op76no3-ii-m0-20", "violin:i,violin:i,flute:i,cello:i,trumpet:b"),
+    ("osq-haydn-op76no3-ii-m0-20", "violin:i,violin:i,viola:i,cello:i,flute:i,clarinet:i,trumpet:i,horn:i"),
+    ("osq-hensel-eflat-iii-m1-16", "violin:i,violin:i,flute:i,cello:i,trumpet:b"),
+])
+def test_extra_players_double_and_never_sound_under_the_bass(eid, band):
+    ex = _load(eid)
+    roster = _band(band)
+    res = arrange(ex, roster, "greedy", log=lambda m: None)
+    plan, c = res["plan"], res["checks"]
+    assert validate(plan, ex, roster).ok  # still one line per player at a time
+    doublings = [a for a in plan["assignments"] if a.get("role") == "doubling"]
+    assert doublings and all(a["doubles"] in ("melody", "bass") for a in doublings)
+    act = {x["player"]: x for x in c["player_activity"]}
+    assert set(act) == {p.id for p in roster.players}
+    assert all(x["bars_total"] == len(ex.measure_numbers) for x in act.values())
+    # before: the 5th player of a 4-line piece got 1 bar (Emperor) or none (Hensel)
+    assert min(x["bars_played"] for x in act.values()) >= len(ex.measure_numbers) // 2
+    for v in c["voicing_issues"]:  # a player has one line per bar, so an event there is the doubling's
+        if v["kind"] == "below_bass":
+            assert not (_bars(v["measures"]) & _doubling_bars(plan, v["player"])), v
+
+
+def test_rule_based_plan_keeps_lines_with_their_players():
+    # 8 players on the Emperor theme: before, Violin 1 handed the tune's last bar to the clarinet,
+    # the real Violin 2 sat out while winds played its line, and the line map showed 5 handoffs.
+    ex = _load("osq-haydn-op76no3-ii-m0-20")
+    roster = _band("violin:i,violin:i,viola:i,cello:i,flute:i,clarinet:i,trumpet:i,horn:i")
+    res = arrange(ex, roster, "greedy", log=lambda m: None)
+    lines = {(a["source_part"], a["player"], a["start_measure"], a["end_measure"])
+             for a in res["plan"]["assignments"] if a.get("role") != "doubling"}
+    assert lines == {("P1", "p0", 0, 20), ("P2", "p1", 0, 20), ("P3", "p2", 0, 20), ("P4", "p3", 0, 20)}
+    assert res["checks"]["handoffs"] == 0
+    # the preset bands keep their lines too (the old rule-based plan had 6-7 handoffs here)
+    for rid in ("winds4", "no_viola"):
+        assert arrange(ex, PRESETS[rid], "greedy", log=lambda m: None)["checks"]["handoffs"] <= 2, rid
+
+
+def test_short_last_phrase_joins_the_one_before():
+    ex = _load("osq-haydn-op76no3-ii-m0-20")  # bars 0-20: 4-bar phrases leave bar 20 alone
+    assert [b for b, _ in _phrases(ex, summarize(ex))][-2:] == [(12, 15), (16, 20)]
+    plan = greedy_plan(ex, summarize(ex), PRESETS["winds4"])
+    assert not any(r["start_measure"] == 20 for r in plan["roles"])
+    assert not any(a["start_measure"] == 20 for a in plan["assignments"])
+
+
+def test_handoffs_ignore_doublings():
+    plan = {"assignments": [_asg("P1", "a", 0, lo=1, hi=8), _asg("P1", "b", 0, lo=9, hi=12),
+                            dict(_asg("P1", "c", 0, lo=1, hi=4), role="doubling"),
+                            dict(_asg("P1", "c", 0, lo=9, hi=12), role="doubling")]}
+    assert handoffs(plan) == 1
+
+
+def test_player_activity_counts_bars_with_notes(ex):
+    roster = PRESETS["winds4"]
+    plan = {"summary": "", "roles": [], "dropped": _drop("P2", "P3", "P4") + _drop("P1", lo=5, hi=12),
+            "assignments": [_asg("P1", "fl", 0, lo=1, hi=4)]}
+    res = arrange(ex, roster, "fixed", fixed_plan=plan, log=lambda m: None)
+    act = {x["player"]: (x["bars_played"], x["bars_total"]) for x in res["checks"]["player_activity"]}
+    assert act == {"fl": (4, 12), "cl": (0, 12), "asx": (0, 12), "bsn": (0, 12)}
+
+
+def test_parts_carry_composer_work_movement_and_bars():
+    e = next(x for x in MANIFEST["excerpts"] if x["id"] == "osq-haydn-op76no3-ii-m0-20")
+    ex = _load(e["id"])
+    res = arrange(ex, PRESETS["no_viola"], "greedy", piece=piece_meta(e), log=lambda m: None)
+    titles = set()
+    for pid, xml in res["musicxml"]["parts"].items():
+        label = PRESETS["no_viola"].player(pid).label
+        assert '<creator type="composer">Joseph Haydn</creator>' in xml and "Music21" not in xml
+        assert re.search(r"<work-title>String Quartet in C major, Hob\.III:77", xml)
+        mt = re.search(r"<movement-title>(.*?)</movement-title>", xml).group(1)
+        assert mt == f"{e['movement']}, mm. 0–20 — {label}"
+        titles.add(mt)
+    assert len(titles) == 4
+    for xml in (res["musicxml"]["original"], res["musicxml"]["arranged"]):
+        assert '<creator type="composer">Joseph Haydn</creator>' in xml and "mm. 0–20" in xml
+
+
+def test_preset_labels_are_distinct():
+    for rid, roster in PRESETS.items():
+        labels = [p.label for p in roster.players]
+        assert len(set(labels)) == len(labels), rid
+    assert [p.label for p in PRESETS["no_viola"].players][:2] == ["Violin 1 (advanced)", "Violin 2"]
+    assert [p.label for p in PRESETS["church_brass"].players][:2] == ["Trumpet 1", "Trumpet 2 (beginner)"]

@@ -19,16 +19,55 @@ export async function loadComparison(): Promise<Comparison | null> {
   }
 }
 
+/**
+ * Does this look like an ArrangeResult the pages can render? Checks the fields every view reads, so a
+ * wrong-but-valid JSON body (an error object from a proxy, a changed engine) is reported as an error
+ * instead of crashing the page.
+ */
+export function looksLikeResult(x: unknown): x is ArrangeResult {
+  if (!x || typeof x !== "object") return false;
+  const r = x as Partial<ArrangeResult>;
+  return (
+    !!r.piece &&
+    Array.isArray(r.piece.measures) &&
+    Array.isArray(r.source_parts) &&
+    !!r.roster &&
+    Array.isArray(r.roster.players) &&
+    !!r.plan &&
+    Array.isArray(r.plan.assignments) &&
+    Array.isArray(r.plan.roles) &&
+    Array.isArray(r.plan.dropped) &&
+    !!r.checks &&
+    typeof r.checks.notes_total === "number" &&
+    !!r.checks.essential_coverage &&
+    Array.isArray(r.coverage) &&
+    !!r.musicxml &&
+    typeof r.musicxml.original === "string" &&
+    typeof r.musicxml.arranged === "string" &&
+    !!r.musicxml.parts &&
+    !!r.midi &&
+    typeof r.midi.original === "string" &&
+    typeof r.midi.arranged === "string"
+  );
+}
+
 const resultCache = new Map<string, Promise<ArrangeResult>>();
 
 /** Precomputed result at public/demos/<result_id>.json. Cached per session. */
 export function loadResult(resultId: string): Promise<ArrangeResult> {
   let p = resultCache.get(resultId);
   if (!p) {
-    p = fetch(`${DEMOS}${encodeURIComponent(resultId)}.json`).then(async (res) => {
-      if (!res.ok) throw new Error(`Couldn't load result ${resultId} (HTTP ${res.status}).`);
-      return (await res.json()) as ArrangeResult;
-    });
+    p = fetch(`${DEMOS}${encodeURIComponent(resultId)}.json`)
+      .catch(() => {
+        // fetch() rejects only on network failure; its own text ("Failed to fetch") means nothing to a director.
+        throw new Error("Couldn't open the precomputed parts (network error).");
+      })
+      .then(async (res) => {
+        if (!res.ok) throw new Error(`Couldn't open the precomputed parts (HTTP ${res.status}).`);
+        const body: unknown = await res.json().catch(() => null);
+        if (!looksLikeResult(body)) throw new Error("The precomputed parts file is damaged.");
+        return body;
+      });
     p.catch(() => resultCache.delete(resultId));
     resultCache.set(resultId, p);
   }
@@ -108,10 +147,13 @@ export async function arrangeLive(req: ArrangeRequest, signal?: AbortSignal): Pr
     }
     throw new Error(`The engine rejected this band (HTTP ${res.status}): ${msg.slice(0, 200)}`);
   }
-  const text = await res.text();
+  const text = await res.text().catch(() => "");
+  let body: unknown;
   try {
-    return JSON.parse(text) as ArrangeResult;
+    body = JSON.parse(text);
   } catch {
-    throw new ServiceUnavailable("The arranging service answered with something that isn't a result.");
+    body = null;
   }
+  if (!looksLikeResult(body)) throw new ServiceUnavailable("The arranging service answered with something that isn't a result.");
+  return body;
 }

@@ -160,10 +160,14 @@ def total_problems(b: dict) -> int:
 
 
 def handoffs(plan: dict) -> int:
-    """How many times a source line changes hands between players (continuity; lower is calmer)."""
+    """How many times a source line changes hands between players (continuity; lower is calmer).
+    Extra players' doublings (assignments marked role "doubling") are not the line's carrier, so
+    they are left out: the line's own player is what this counts."""
     n = 0
     by_part: dict[str, list[dict]] = {}
     for a in plan["assignments"]:
+        if a.get("role") == "doubling":
+            continue
         by_part.setdefault(a["source_part"], []).append(a)
     for spans in by_part.values():
         spans.sort(key=lambda a: a["start_measure"])
@@ -171,6 +175,25 @@ def handoffs(plan: dict) -> int:
             if cur["player"] != prev["player"] and cur["start_measure"] > prev["end_measure"]:
                 n += 1
     return n
+
+
+def player_activity(exe, ex: Excerpt, roster: Roster) -> list[dict]:
+    """For each player: bars of the excerpt in which their final part has at least one note."""
+    from music21 import stream
+    total = len(ex.measure_numbers)
+    out = []
+    for p in roster.players:
+        played = sum(1 for m in exe.parts[p.id].getElementsByClass(stream.Measure)
+                     if len(m.recurse().notes) > 0)
+        out.append({"player": p.id, "bars_played": played, "bars_total": total})
+    return out
+
+
+def excerpt_heading(piece: dict, ex: Excerpt) -> str:
+    """'II. Poco adagio; cantabile — Theme, mm. 0–20' for file metadata."""
+    bars = f"mm. {ex.start_measure}–{ex.end_measure}"
+    mv = piece.get("movement")
+    return f"{mv}, {bars}" if mv else bars
 
 
 def arrange(ex: Excerpt, roster: Roster, planner: str = "greedy", piece: dict | None = None,
@@ -237,10 +260,10 @@ def arrange(ex: Excerpt, roster: Roster, planner: str = "greedy", piece: dict | 
         unfit = [v.to_json(roster) for v in e.violations]
         if e.violations and repair:
             ex_mod.fold_out_of_range(e, roster)
-        v = ex_mod.voicing_issues(p, e, ex, roster)
+        v, missing_bars = ex_mod.voicing_report(p, e, ex, roster)
         bad = {"out_of_range_raw": raw, "out_of_range": len(unfit), "folded": e.notes_folded,
                "under_bass": sum(x["events"] for x in v if x["kind"] == "below_bass"),
-               "bass_missing_bars": sum(1 for x in v if x["kind"] == "bass_missing")}
+               "bass_missing_bars": missing_bars}  # distinct bars, not issue entries (one entry per bass line)
         return p, e, bad, v, unfit
 
     plan, exe, bad, voicing, unfit = finish(plan)
@@ -291,8 +314,9 @@ def arrange(ex: Excerpt, roster: Roster, planner: str = "greedy", piece: dict | 
 
     title = piece.get("title", "Excerpt")
     composer = piece.get("composer")
-    with_title(sc, f"{title} — covered for {roster.label}", composer)
-    orig = with_title(original_score(ex), title, composer)
+    heading = excerpt_heading(piece, ex)
+    with_title(sc, title, composer, f"{heading} — covered for {roster.label}")
+    orig = with_title(original_score(ex), title, composer, heading)
     checks = {
         "notes_total": exe.notes_total,
         "notes_out_of_range": len(exe.violations),
@@ -316,6 +340,7 @@ def arrange(ex: Excerpt, roster: Roster, planner: str = "greedy", piece: dict | 
         "voicing_issues": voicing,
         "role_problems_left": role_left,
         "handoffs": handoffs(plan),
+        "player_activity": player_activity(exe, ex, roster),
         "violations": [v.to_json(roster) for v in exe.violations],
     }
     return {
@@ -331,7 +356,8 @@ def arrange(ex: Excerpt, roster: Roster, planner: str = "greedy", piece: dict | 
         "musicxml": {
             "original": to_musicxml(orig),
             "arranged": to_musicxml(sc),
-            "parts": {p.id: to_musicxml(written_part(exe.parts[p.id], roster, p.id, title)) for p in roster.players},
+            "parts": {p.id: to_musicxml(written_part(exe.parts[p.id], roster, p.id, title, composer, heading))
+                      for p in roster.players},
         },
         "midi": {"original": to_midi_b64(orig), "arranged": to_midi_b64(sc)},
     }

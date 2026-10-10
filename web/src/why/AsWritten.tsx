@@ -186,13 +186,13 @@ export function AsWritten({ index, band, setBand }: { index: DemoIndex | null; b
               {big ?? "…"}
             </span>
             <span className="why-big-l">
-              {view === "as_written" ? "notes out of the player's range" : "notes out of range"}
+              {view === "as_written" ? "notes outside the player's assumed range" : "notes out of range"}
               {shown && (
                 <small>
                   of {shown.checks.notes_total} notes ·{" "}
                   {view === "as_written"
-                    ? `${plural(shown.checks.measures_dropped ?? 0, "bar")} nobody plays`
-                    : `${plural(shown.checks.notes_folded, "single note")} moved an octave · ${plural(shown.checks.measures_dropped ?? 0, "bar")} left out`}
+                    ? `${plural(shown.checks.measures_dropped ?? 0, "line-bar")} nobody plays`
+                    : `${plural(shown.checks.notes_folded, "single note")} moved an octave · ${plural(shown.checks.measures_dropped ?? 0, "line-bar")} left out`}
                 </small>
               )}
             </span>
@@ -229,13 +229,17 @@ export function AsWritten({ index, band, setBand }: { index: DemoIndex | null; b
           <div className="why-score">
             <ScoreView
               xml={shown.musicxml.arranged}
-              label={view === "as_written" ? "Full score as written, notes out of range drawn with x noteheads" : "Cover Part's score, notes colored by source line"}
+              label={
+                view === "as_written"
+                  ? "Full score as written, notes outside the player's assumed range drawn with x noteheads"
+                  : "Cover Part's score, notes colored by source line"
+              }
               player={player}
               follow
             />
             <p className="why-cap">
               {view === "as_written"
-                ? "Concert pitch. Notes a player can't reach are drawn with x noteheads; playback plays them anyway, so you hear what the page asks for."
+                ? "Concert pitch. Notes outside the player's assumed range are drawn with x noteheads; playback plays them anyway, so you hear what the page asks for."
                 : "Concert pitch. Each player's own part (written pitch, right clef) is in the tool."}
             </p>
           </div>

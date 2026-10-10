@@ -45,42 +45,44 @@ function splitSource(fact: string): [string, string | null] {
   return [t.slice(0, i).trimEnd(), t.slice(i + "[source:".length, -1).trim()];
 }
 
-/** Ryan's text when written; until then the verified facts as numbered margin notes. */
+/**
+ * A section's words: Ryan's text when written (above), then the verified facts as numbered points.
+ * Each fact's [source: …] renders as a .why-src line, shown only when the page's "Show sources" is on.
+ */
 export function Prose({ section, values }: { section: Section; values: Values }) {
-  if (section.text.trim()) {
-    return (
-      <div className="why-text">
-        {section.text
-          .split(/\n\s*\n/)
-          .filter((p) => p.trim())
-          .map((p, i) => (
-            <p key={i}>{fill(p.trim(), values)}</p>
-          ))}
-      </div>
-    );
-  }
-  if (!section.facts.length) return null;
+  const text = section.text.trim();
+  const one = section.facts.length === 1;
   return (
-    <aside className="why-notes" aria-label="Notes: verified facts for this section">
-      <p className="why-notes-label">
-        <span>Notes</span>
-        <span className="why-notes-hint">verified facts · author's text to come</span>
-      </p>
-      <ol>
-        {section.facts.map((f, i) => {
-          const [body, source] = splitSource(f);
-          return (
-            <li key={i} data-fact={`${section.id}-${i + 1}`}>
-              <span className="why-note-n" aria-hidden="true">
-                ({i + 1})
-              </span>
-              <span className="why-note-body">{fill(body, values)}</span>
-              {source && <span className="why-note-src">{fillPlain(source, values)}</span>}
-            </li>
-          );
-        })}
-      </ol>
-    </aside>
+    <>
+      {text && (
+        <div className="why-text">
+          {text
+            .split(/\n\s*\n/)
+            .filter((p) => p.trim())
+            .map((p, i) => (
+              <p key={i}>{fill(p.trim(), values)}</p>
+            ))}
+        </div>
+      )}
+      {section.facts.length > 0 && (
+        <ol className={`why-notes${one ? " is-single" : ""}`} aria-label={`${section.heading}: key points`}>
+          {section.facts.map((f, i) => {
+            const [body, source] = splitSource(f);
+            return (
+              <li key={i} data-fact={`${section.id}-${i + 1}`}>
+                {!one && (
+                  <span className="why-note-n" aria-hidden="true">
+                    {i + 1}
+                  </span>
+                )}
+                <span className="why-note-body">{fill(body, values)}</span>
+                {source && <span className="why-note-src why-src">Source: {fillPlain(source, values)}</span>}
+              </li>
+            );
+          })}
+        </ol>
+      )}
+    </>
   );
 }
 
@@ -138,7 +140,7 @@ export function SectionShell({
       <div className="why-apparatus" aria-hidden="true">
         <span className="why-app-n">{index}</span>
         <span className="why-app-k">{kicker}</span>
-        {source && <span className="why-app-src">{source}</span>}
+        {source && <span className="why-app-src why-src">{source}</span>}
       </div>
       {hero && (
         <h1 className="why-h why-h--hero" id={`why-${id}-h`}>

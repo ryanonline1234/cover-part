@@ -64,7 +64,7 @@ export function RangeChart({ result }: { result: ArrangeResult }) {
               <span className="why-range-track">
                 <span className="why-range-bar is-line" style={bar(r.lo, r.hi)} />
                 {out.map(([a, b]) => (
-                  <span key={a} className="why-range-out" style={bar(a, b)} title={`${midiToName(a)}–${midiToName(b)}: no player in this band reaches it`} />
+                  <span key={a} className="why-range-out" style={bar(a, b)} title={`${midiToName(a)}–${midiToName(b)}: outside every player's assumed range`} />
                 ))}
                 <span className="why-range-val" style={{ left: `${x(r.hi + 0.5)}%` }}>
                   {midiToName(r.lo)}–{midiToName(r.hi)}
@@ -73,7 +73,7 @@ export function RangeChart({ result }: { result: ArrangeResult }) {
             </div>
           );
         })}
-        <p className="why-range-group">Who you have</p>
+        <p className="why-range-group">Who you have, assumed ranges</p>
         {players.map((r) => (
           <div className="why-range-row" key={r.key}>
             <span className="why-range-name">{r.name}</span>
@@ -101,8 +101,9 @@ export function RangeChart({ result }: { result: ArrangeResult }) {
         </div>
       </div>
       <figcaption className="why-cap">
-        Colored bars: each line's lowest to highest note in this excerpt. Outlined bars: each player's range.
-        {anyOut ? " Hatched: pitches no player in this band can reach." : " Every pitch is inside at least one player's range."}
+        Colored bars: each line's lowest to highest note in this excerpt. Outlined bars: the range assumed for each player's level
+        (typical school-level ranges, not hard limits).
+        {anyOut ? " Hatched: pitches outside these players' assumed ranges." : " Every pitch is inside at least one player's assumed range."}
       </figcaption>
     </figure>
   );

@@ -1,5 +1,6 @@
 import { useRef, useState, type CSSProperties } from "react";
 import type { DemoIndex } from "../types";
+import { metricText } from "../Scoreboard";
 import { section } from "./copy";
 import { useABPlayer, useComparison, useNear, useResult } from "./hooks";
 import { MELODY_MAPS } from "./melodyMaps";
@@ -26,7 +27,7 @@ export function StillWrong({ index }: { index: DemoIndex | null }) {
   const rosters = index?.rosters ?? [];
   const bandLabel = (id: string) => shortBand(rosters.find((r) => r.id === id)?.label ?? id);
 
-  // Bars left out, summed per band, per planner (comparison.json rows[].dropped).
+  // Line-bars left out, summed per band, per planner (comparison.json rows[].dropped).
   const bandIds = [...new Set(cmp?.rows.map((r) => r.roster) ?? [])];
   const sums = (planner: "ai" | "greedy") =>
     bandIds.map((b) => ({
@@ -46,7 +47,17 @@ export function StillWrong({ index }: { index: DemoIndex | null }) {
 
   const values: Values = {};
   if (cmp) {
+    const am = num(dropT?.ai_mean);
+    const gm = num(dropT?.greedy_mean);
     Object.assign(values, {
+      drop_lead:
+        am === null || gm === null
+          ? null
+          : mean1(am) === mean1(gm)
+            ? "The AI and the rule-based plan leave out about the same amount of music"
+            : am > gm
+              ? "The AI leaves out more music"
+              : "The AI leaves out less music",
       drop_ai_mean: mean1(dropT?.ai_mean),
       drop_g_mean: mean1(dropT?.greedy_mean),
       drop_ai_sum: aiTotal,
@@ -74,7 +85,7 @@ export function StillWrong({ index }: { index: DemoIndex | null }) {
               data-band={p.band}
               data-bars={p.bars}
               style={{ width: `${(p.bars / maxTotal) * 100}%`, "--shade": SHADES[k % SHADES.length] } as CSSProperties}
-              title={`${bandLabel(p.band)}: ${p.bars} bars`}
+              title={`${bandLabel(p.band)}: ${p.bars} line-bars`}
             >
               <span>{p.bars}</span>
             </span>
@@ -96,7 +107,7 @@ export function StillWrong({ index }: { index: DemoIndex | null }) {
     >
       <div className="why-panel why-panel--stack" ref={ref} data-demo="still-wrong">
         <figure className="why-sub" data-sub="dropped">
-          <p className="why-sub-k">(a) Bars of music left out, all {cmp?.n_pairs ?? "…"} pairs</p>
+          <p className="why-sub-k">(a) Line-bars left out, all {cmp?.n_pairs ?? "…"} pairs</p>
           {cmp ? (
             <>
               <div className="why-stack">
@@ -112,12 +123,12 @@ export function StillWrong({ index }: { index: DemoIndex | null }) {
                 ))}
               </p>
               <figcaption className="why-cap">
-                Bars (part × bar with notes) that no player plays, summed by band. Fewer bars left out: rule-based plan in{" "}
-                {dropT?.greedy_better} pairs, AI in {dropT?.ai_better}, tied in {dropT?.tie}.
+                A line-bar is one bar of one original line; counted are line-bars with notes that no player plays, summed by band.
+                Fewer left out: rule-based plan in {dropT?.greedy_better} pairs, AI in {dropT?.ai_better}, tied in {dropT?.tie}.
               </figcaption>
             </>
           ) : (
-            <p className="why-loading">Loading comparison.json…</p>
+            <p className="why-loading">Loading the results…</p>
           )}
         </figure>
 
@@ -141,7 +152,10 @@ export function StillWrong({ index }: { index: DemoIndex | null }) {
           )}
           {v2rows.length > 0 && (
             <table className="why-mini" data-table="var2-melody-id">
-              <caption>Melody identified, every band (comparison.json)</caption>
+              <caption>
+                Melody identified, every band, against the AI-written reference map
+                <span className="why-src"> · Source: demos/comparison.json → rows[].melody_id</span>
+              </caption>
               <thead>
                 <tr>
                   <th scope="col">Band</th>
@@ -163,7 +177,8 @@ export function StillWrong({ index }: { index: DemoIndex | null }) {
           <div className="why-panel-foot">
             <PlayButton player={player} label="Hear the original" id="still-wrong" />
             <span className="why-cap">
-              The hymn is in the cello; the busy line above it is {base?.source_parts.find((s) => s.id === "P1")?.name ?? "the first violin"}'s countermelody.
+              The reference map puts the hymn in the cello; the busy line above it is{" "}
+              {base?.source_parts.find((s) => s.id === "P1")?.name ?? "the first violin"}'s countermelody.
             </span>
           </div>
         </figure>
@@ -175,11 +190,18 @@ export function StillWrong({ index }: { index: DemoIndex | null }) {
               <caption className="sr-only">Metrics measured over all pairs, and what is not measured</caption>
               <tbody>
                 {cmp.metrics.map((m) => (
-                  <tr key={m.key}>
-                    <th scope="row">{m.label}</th>
-                    <td>measured, {cmp.totals[m.key]?.n ?? cmp.n_pairs} pairs</td>
+                  <tr key={m.key} data-metric={m.key}>
+                    <th scope="row">{metricText(m).name}</th>
+                    <td>
+                      measured, {cmp.totals[m.key]?.n ?? cmp.n_pairs} pairs
+                      {(m.key === "melody_id" || m.key === "melody") && ", against the AI-written reference map"}
+                    </td>
                   </tr>
                 ))}
+                <tr className="is-unmeasured" data-row="reference-map">
+                  <th scope="row">The reference melody map behind both melody metrics</th>
+                  <td>written by a Claude Code agent; not checked by a musician</td>
+                </tr>
                 <tr className="is-unmeasured" data-row="sounds-good">
                   <th scope="row">Whether the cover sounds good</th>
                   <td>not measured</td>

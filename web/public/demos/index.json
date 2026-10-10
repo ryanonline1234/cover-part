@@ -598,7 +598,7 @@
    "players": [
     {
      "id": "vn1",
-     "label": "Violin",
+     "label": "Violin 1 (advanced)",
      "instrument": "violin",
      "level": "advanced",
      "range_written": [
@@ -612,7 +612,7 @@
     },
     {
      "id": "vn2",
-     "label": "Violin",
+     "label": "Violin 2",
      "instrument": "violin",
      "level": "intermediate",
      "range_written": [
@@ -660,7 +660,7 @@
    "players": [
     {
      "id": "tp1",
-     "label": "Trumpet in B\u266d",
+     "label": "Trumpet 1",
      "instrument": "trumpet",
      "level": "intermediate",
      "range_written": [

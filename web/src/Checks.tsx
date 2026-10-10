@@ -241,8 +241,8 @@ const ROWS: Row[] = [
     show: (r) => has(r.checks.handoffs),
   },
   {
-    label: "Bars of music left out",
-    def: "Bars of a line that has notes in the original but that no player plays.",
+    label: "Line-bars left out",
+    def: "Each line of the original counted on its own: bars where that line has notes but no player plays it, added up across the lines.",
     value: (r) => n(r.checks.measures_dropped),
     show: (r) => has(r.checks.measures_dropped),
   },

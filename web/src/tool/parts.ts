@@ -88,6 +88,8 @@ export function dutiesOf(result: ArrangeResult, playerId: string): Duty[] {
     .filter((a) => a.player === playerId)
     .sort((x, y) => x.start_measure - y.start_measure || x.source_part.localeCompare(y.source_part))
     .map((a) => {
+      // An extra player playing along with the line's own player: say so, not the line's role.
+      if (a.role === "doubling") return { a, line: lines.get(a.source_part), role: `doubling the ${a.doubles ?? "line"}` };
       // Every role the plan gave this line over the span, in order ("melody", or "melody, then accompaniment").
       const roles = result.plan.roles
         .filter((x) => x.source_part === a.source_part && x.start_measure <= a.end_measure && a.start_measure <= x.end_measure)

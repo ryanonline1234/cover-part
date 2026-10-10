@@ -313,12 +313,19 @@ def _assignment_pitches(a: dict, ex: Excerpt, lo: int, hi: int) -> list[float]:
 def best_octave_repair(plan: dict, ex: Excerpt, roster: Roster, seg_len: int = 4) -> tuple[dict, int]:
     """For each assignment with out-of-range notes, try whole-octave shifts: first for the whole
     assignment, then phrase by phrase (seg_len bars), which is what an arranger does for a player with a
-    narrow range. Returns the repaired plan and how many assignments changed."""
+    narrow range. Returns the repaired plan and how many assignments changed.
+
+    A rule-based doubling (role "doubling") is left alone: its planner already chose the best
+    octave that keeps it from sounding under the bass, and this repair, which looks only at range,
+    could move it under the bass. Any note of it that is still out of range is folded and counted."""
     plan = copy.deepcopy(plan)
     changed = 0
     bounds = segments(ex, seg_len)
     out_assignments = []
     for a in plan["assignments"]:
+        if a.get("role") == "doubling":
+            out_assignments.append(a)
+            continue
         player = roster.player(a["player"])
         lo_ps, hi_ps = (p.ps for p in player.range_sounding)
 
@@ -383,8 +390,17 @@ def voicing_issues(plan: dict, exe: Execution, ex: Excerpt, roster: Roster) -> l
     bass" if it sounds below every player carrying that line at that instant. The original rendered
     one line per player therefore scores 0 by construction. "bass_missing" bars are bars where the
     original's bass line is not assigned to anyone."""
+    return voicing_report(plan, exe, ex, roster)[0]
+
+
+def voicing_report(plan: dict, exe: Execution, ex: Excerpt, roster: Roster) -> tuple[list[dict], int]:
+    """voicing_issues plus the number of distinct bars with no bass carrier at some instant. One
+    issue entry is kept per bass SOURCE LINE, so the bar count is taken from the bar numbers
+    themselves (union over entries, before they are compressed to "41-52, 54-56" text), never from
+    the number of entries."""
     order = {sp.id: i for i, sp in enumerate(ex.parts)}
     by_key: dict = {}
+    missing_bars: set[int] = set()
 
     def entry(key, base):
         return by_key.setdefault(key, base | {"measures": [], "events": 0, "max_semitones": 0, "_seen": set()})
@@ -404,6 +420,7 @@ def voicing_issues(plan: dict, exe: Execution, ex: Excerpt, roster: Roster) -> l
             carriers = [a["player"] for a in plan["assignments"]
                         if a["source_part"] == bass_src and a["start_measure"] <= num <= a["end_measure"]]
             if not carriers:
+                missing_bars.add(num)
                 d = entry(("bass_missing", bass_src), {"player": None, "bass_line": bass_src, "kind": "bass_missing"})
                 if num not in d["measures"]:
                     d["measures"].append(num)
@@ -429,9 +446,10 @@ def voicing_issues(plan: dict, exe: Execution, ex: Excerpt, roster: Roster) -> l
     out = []
     for d in by_key.values():
         d.pop("_seen")
+        d["bars"] = len(d["measures"])
         d["measures"] = _ranges(sorted(d["measures"]))
         out.append(d)
-    return out
+    return out, len(missing_bars)
 
 
 def assemble(ex: Excerpt, exe: Execution, roster: Roster) -> stream.Score:

@@ -1,4 +1,5 @@
 import { Suspense, lazy, useCallback, useEffect, useRef, useState } from "react";
+import { ErrorBoundary } from "./ErrorBoundary";
 import ToolPage from "./tool/ToolPage";
 
 // The why page is its own chunk; it loads the first time someone opens it.
@@ -81,13 +82,18 @@ export default function App() {
 
       {toolSeen && (
         <div hidden={!isTool}>
-          <ToolPage query={tool.query} nav={tool.nav} active={isTool} onHash={onToolHash} />
+          <ErrorBoundary what="the arranging tool" resetKey={`tool-${tool.nav}`}>
+            <ToolPage query={tool.query} nav={tool.nav} active={isTool} onHash={onToolHash} />
+          </ErrorBoundary>
         </div>
       )}
       {!isTool && (
-        <Suspense fallback={<p className="tool-opening">Opening…</p>}>
-          <WhyPage bare />
-        </Suspense>
+        <ErrorBoundary what="the why page" resetKey="why">
+          <Suspense fallback={<p className="tool-opening">Opening…</p>}>
+            {/* Links back to the tool keep the reader's piece and band. */}
+            <WhyPage bare toolHref={toolHash} />
+          </Suspense>
+        </ErrorBoundary>
       )}
 
       <footer className="colophon">

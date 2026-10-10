@@ -97,11 +97,12 @@ PRESETS: dict[str, Roster] = {
             Player("fl", "flute"), Player("cl", "clarinet"), Player("asx", "alto_sax"), Player("bsn", "bassoon"),
         ]),
         Roster("no_viola", "Quartet that lost its viola: 2 violins, cello, + a clarinet", [
-            Player("vn1", "violin", "advanced"), Player("vn2", "violin"), Player("vc", "cello"),
+            Player("vn1", "violin", "advanced", label="Violin 1 (advanced)"), Player("vn2", "violin", label="Violin 2"),
+            Player("vc", "cello"),
             Player("cl", "clarinet"),
         ]),
         Roster("church_brass", "Church brass: 2 trumpets (one beginner), horn, euphonium", [
-            Player("tp1", "trumpet"), Player("tp2", "trumpet", "beginner", label="Trumpet 2 (beginner)"),
+            Player("tp1", "trumpet", label="Trumpet 1"), Player("tp2", "trumpet", "beginner", label="Trumpet 2 (beginner)"),
             Player("hn", "horn"), Player("euph", "euphonium"),
         ]),
         Roster("sax_trio", "Three saxes and nothing else", [
