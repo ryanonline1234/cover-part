@@ -1,19 +1,17 @@
 # State — Cover Part (EvoHacks2026 entry)
-_Updated: 2026-10-10 ~13:30 PDT_
+_Updated: 2026-10-10 14:40 PDT_
 
 ## Now
-Redesign shipped to main (commit 3713104), and the production deploy via Git integration is in progress. Note: the Vercel project is Git-connected, so every push to main deploys production. Contents:
-- the band-folder tool at #/, with a live rule-based plan for custom bands through the Python function /api/arrange (AI plans precomputed for the 4 preset bands; no key);
-- the why page at #/why, with 4 live demos plus evidence; its prose is empty for Ryan (web/src/why/copy.ts);
-- all 17 confirmed review findings fixed and all results rebuilt.
-
-The scoreboard moved against the AI: the hand-off lead is mostly gone, and its notes-under-the-bass mean rose because of a few bad single runs. The README states this. Eligibility: Ryan still has to send the organizer email (Gmail draft) and do the guide (notes-local/ryan-guide.md).
+LIVE at cover-part.vercel.app (Git-connected: every push to main deploys production).
+- **Built:** band-folder tool; upload your own MusicXML (live, rule-based, not stored); AI best-of-3 chosen by the checker for the preset results; why page with live demos plus evidence.
+- **Scoreboard (24 pairs, best-of-3):** the AI is better on melody identified (71% vs 54%), bass (97% vs 87%), notes under the bass (4.0 vs 14.7) and final folds (0.9 vs 4.25). The baseline leaves out less music (4.2 vs 6.4 line-bars).
+- **Video:** the script is locked and verified (notes-local/video/SCRIPT_FINAL.md and pipeline/spec.py; 2:51.8, 359 words). The recording workflow is running: cards, why takes and tool takes, then assembly, an independent frame review and a fix pass. Deliverables go to notes-local/video/out/.
+- **Ryan's to-dos:** narrate (teleprompter); upload to YouTube; submit Devpost by 11:15 AM 10/11. Optional: the organizer email (Gmail draft) and the why-page prose (skipped for now). The arranger rules stay as written, by Ryan's decision.
 
 ## Verified
-- engine/tests: 40 pass (regressions for the engine review's 13 findings and the redesign review's engine findings).
-- Final scoreboard (out/report5.md, web/public/demos/comparison.json): AI better on melody identified (73% vs 54%, 15/0/9), bass preserved (95% vs 88%), notes under bass (5.4 vs 13.1), final folds (0.9 vs 3.9), handoffs (1.9 vs 5.25); baseline better on bars left out (4.2 vs 6.9); first-plan folds ≈ equal. Both planners mislabel the melody in Haydn Var. II.
-- Web round 3 verified headless (cursor/playhead 36/36 on pickup excerpts; A/B playback; scoreboard; ?live=1).
-- Fact sheet (notes-local/video/ground/facts.md) recomputed all scoreboard means from the 48 files: match.
+- engine/tests: 49 pass.
+- Production checks (14:20): health; library pieces; a live custom band; the Arriaga upload (inspect in 1.2 s, arrange in 2.1 s); AI 403 for custom bands and uploads; best-of-3 data on the demo pairs.
+- The video script's numbers were re-verified against the deployed data by a refute-first accuracy lens (every spoken figure matches).
 
 ## Pending (needs Ryan unless noted)
 0. Ryan: send the organizer email (Gmail draft) + Discord post; do guide Blocks A–D.
