@@ -1,8 +1,8 @@
 # State — Cover Part (EvoHacks2026 entry)
-_Updated: 2026-10-10 ~11:15 PDT_
+_Updated: 2026-10-10 ~11:40 PDT_
 
 ## Now
-PUBLISHED: public repo https://github.com/ryanonline1234/cover-part, live https://cover-part.vercel.app (Vercel project ryanonline1234s-projects/cover-part, CLI deploy from web/; production verified in browser 10:58). Eligibility: EvoHacks Code of Conduct §5 says "almost entirely AI without meaningful student contribution may be disqualified". Ryan chose: ask the organizers (Gmail draft created, not sent) + make his contribution real (private guide notes-local/ryan-guide.md: learn the pipeline, rewrite engine/coverpart/arranger_rules.md himself, own decisions, write description and narration in his words). Video: shot map agent running; script drafts wait on Ryan's contribution.
+REDESIGN in flight (Ryan's direction, DECISIONS.md 2026-10-10): band-folder tool as home page + a why page with 4 live demos + live engine (rule-based plans for custom bands) on a Vercel Python function; AI plans stay precomputed for presets (no API key). Build workflow running: engine (as_written demo data), backend (repo-root vercel.json + api/, preview only), tool page, why page (prose in web/src/why/copy.ts left for Ryan). Next: integrate, review workflow (practicality / honesty / design / robustness lenses), fix, promote to production. Published already: repo + cover-part.vercel.app (old layout). Eligibility question to organizers: Gmail draft, Ryan to send.
 
 ## Verified
 - engine/tests: 23 pass (incl. regressions for all 13 confirmed review findings).
