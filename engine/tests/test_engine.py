@@ -201,3 +201,14 @@ def test_roster_rejects_duplicates_and_narrow_overrides():
         Roster.from_json({"players": [{"id": "a", "instrument": "flute"}, {"id": "a", "instrument": "oboe"}]})
     with pytest.raises(ValueError):
         Player("a", "flute", range_override=("C4", "G4"))
+
+
+def test_playback_midi_matches_score_length():
+    import base64 as _b64
+    from music21 import midi as _midi
+    ex = _load("osq-haydn-op76no3-ii-m40-60")
+    res = arrange(ex, PRESETS["winds4"], "greedy", log=lambda m: None)
+    for key in ("original", "arranged"):
+        mf = _midi.MidiFile()
+        mf.readstr(_b64.b64decode(res["midi"][key]))
+        assert float(_midi.translate.midiFileToStream(mf).highestTime) == 80.0

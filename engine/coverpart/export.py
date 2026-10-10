@@ -19,6 +19,12 @@ def to_musicxml(s: stream.Score) -> str:
 
 
 def to_midi_b64(s: stream.Score) -> str:
+    """Playback MIDI. Grace notes are left out of playback (they stay in the notation): inside
+    multi-voice bars music21 gives them real time in MIDI, which shifted Haydn Var. II by 8 beats."""
+    s = copy.deepcopy(s)
+    for n in list(s.recurse().notes):
+        if n.duration.isGrace:
+            n.activeSite.remove(n)
     mf = midi.translate.streamToMidiFile(s)
     return base64.b64encode(mf.writestr()).decode("ascii")
 
