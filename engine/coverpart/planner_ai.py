@@ -125,7 +125,9 @@ class Session:
     def revise(self, plan: dict, problems: list, kind: str) -> dict:
         what = {
             "structure": "These structural problems were found in your plan",
-            "range": "These notes are outside the player's sounding range after your octave shifts",
+            "range": ("These notes still don't fit the player's sounding range even after the checker tried "
+                      "whole-octave shifts phrase by phrase, so they would have to be moved one at a time. "
+                      "Reassign lines or split them between players at phrase points so they fit"),
             "voicing": ("These voicing problems were found after executing your plan: `below_bass` means "
                         "that player sounds under the player carrying the original bass line in those bars "
                         "(events = how many notes, max_semitones = how far under); `bass_missing` means "

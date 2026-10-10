@@ -23,6 +23,14 @@ class Player:
             raise ValueError(f"level must be one of {ins.LEVELS}")
         if self.label is None:
             self.label = inst.label
+        if self.range_override is not None:
+            try:
+                lo, hi = (pitch.Pitch(x) for x in self.range_override)
+            except Exception as e:  # noqa: BLE001 - music21 raises several types for bad names
+                raise ValueError(f"bad range_override {self.range_override!r}: {e}") from e
+            if hi.ps - lo.ps < 12:
+                # Folding a note by octaves only guarantees a fit when the range spans an octave.
+                raise ValueError(f"range_override {self.range_override!r} must span at least an octave")
 
     @property
     def range_written(self) -> tuple[str, str]:
@@ -76,6 +84,9 @@ class Roster:
             )
             for p in d["players"]
         ]
+        ids = [p.id for p in players]
+        if len(set(ids)) != len(ids):
+            raise ValueError("player ids must be unique")
         return cls(id=d.get("id", "custom"), label=d.get("label", "Custom roster"), players=players)
 
 

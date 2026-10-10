@@ -13,10 +13,10 @@ METRICS = [
     ("melody", "Reference melody kept", "higher"),
     ("bass", "Harmonic bass preserved", "higher"),
     ("inversions", "Notes sounding under the bass line", "lower"),
-    ("oor_before", "Notes out of range before repair", "lower"),
-    ("folded", "Single notes octave-folded", "lower"),
+    ("first_unfit", "First plan: notes that needed a single-note fold", "lower"),
+    ("folded", "Final: single notes octave-folded", "lower"),
     ("handoffs", "Line handoffs between players", "lower"),
-    ("dropped", "Dropped spans", "lower"),
+    ("dropped", "Bars of music left out", "lower"),
 ]
 
 
@@ -26,10 +26,10 @@ def row(res: dict) -> dict:
         "melody": c["essential_coverage"]["melody"],
         "bass": c["essential_coverage"]["bass"],
         "inversions": c.get("bass_inversions"),
-        "oor_before": c["notes_out_of_range_before_repair"],
+        "first_unfit": c["first_plan"]["out_of_range"],
         "folded": c["notes_folded"],
         "handoffs": c["handoffs"],
-        "dropped": c["lines_dropped"],
+        "dropped": c["measures_dropped"],
         "repair_rounds": c["repair_rounds"],
     }
 
@@ -76,12 +76,12 @@ def markdown(rep: dict) -> str:
         out.append(f"| {m['label']} ({m['better']} is better) | {t['ai_mean']} | {t['greedy_mean']} | "
                    f"{t['ai_better']} | {t['greedy_better']} | {t['tie']} |")
     out.append("")
-    out.append("| Piece | Roster | melody AI/base | handoffs AI/base | oor-before AI/base | folded AI/base | dropped AI/base |")
-    out.append("|---|---|---|---|---|---|---|")
+    keys = [m["key"] for m in rep["metrics"]]
+    out.append("| Piece | Roster | " + " | ".join(f"{k} AI/base" for k in keys) + " |")
+    out.append("|---|---|" + "---|" * len(keys))
     for r in rep["rows"]:
         a, g = r["ai"], r["greedy"]
-        out.append(f"| {r['piece']} | {r['roster']} | {a['melody']}/{g['melody']} | {a['handoffs']}/{g['handoffs']} | "
-                   f"{a['oor_before']}/{g['oor_before']} | {a['folded']}/{g['folded']} | {a['dropped']}/{g['dropped']} |")
+        out.append(f"| {r['piece']} | {r['roster']} | " + " | ".join(f"{a[k]}/{g[k]}" for k in keys) + " |")
     return "\n".join(out)
 
 

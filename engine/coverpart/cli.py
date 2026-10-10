@@ -59,8 +59,10 @@ def recheck_one(f: Path, manifest: dict, manifest_dir: Path) -> tuple[str, str]:
     res = arrange(ex, PRESETS[roster_id], "fixed", piece=piece_meta(e), fixed_plan=old["plan"],
                   model=old.get("model"), log=lambda m: None)
     res["planner"] = planner
-    for k in ("notes_out_of_range_before_repair", "notes_out_of_range_after_ai_revision", "repair_rounds"):
-        res["checks"][k] = old["checks"][k]
+    for k in ("notes_out_of_range_before_repair", "notes_out_of_range_after_ai_revision", "repair_rounds",
+              "revisions", "first_plan", "bass_inversions_before_revision"):
+        if k in old["checks"]:
+            res["checks"][k] = old["checks"][k]
     res["result_id"] = f.stem
     res["log"] = old.get("log", []) + ["rechecked: stored plan re-executed with the current checker"]
     res["elapsed_s"] = old.get("elapsed_s")
@@ -107,8 +109,13 @@ def main(argv=None) -> int:
         manifest = json.loads(manifest_path.read_text())
         out_dir = Path(args.out).resolve()
         files = sorted(out_dir.glob("osq-*__*__*.json"))
+        def safe(f):
+            try:
+                return recheck_one(f, manifest, manifest_path.parent)
+            except Exception as e:  # noqa: BLE001 - report and keep going
+                return f.stem, f"FAIL {type(e).__name__}: {e}"
         with ThreadPoolExecutor(max_workers=6) as pool:
-            for stem, msg in pool.map(lambda f: recheck_one(f, manifest, manifest_path.parent), files):
+            for stem, msg in pool.map(safe, files):
                 print(stem, msg, flush=True)
         write_index(manifest, out_dir)
         return 0

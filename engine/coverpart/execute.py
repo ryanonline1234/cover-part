@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 
 from music21 import (articulations, chord, clef, dynamics, expressions, instrument, interval, note,
                      stream, tempo)
+from music21.stream import makeNotation
 
 from . import instruments as ins
 from .roster import Player, Roster
@@ -66,17 +67,23 @@ def _src_measure(ex: Excerpt, pid: str, number: int) -> stream.Measure | None:
 
 
 def _pick_voice(m: stream.Measure, policy: str) -> list:
-    """Return the (offset, element) content of a measure as ONE line."""
+    """Return the (offset, element) content of a measure as ONE line. With several voices, take the
+    one that sounds for most of the bar (a one-note fragment padded with hidden rests is not the
+    line); the chord policy breaks ties by register."""
     voices = [v for v in m.voices if v.notes]
     if len(voices) <= 1:
         src = voices[0] if voices else m
         return [(e.getOffsetBySite(src), e) for e in src.notesAndRests]
 
+    def sounding(v):
+        return sum(float(n.duration.quarterLength) for n in v.notes)
+
     def mean(v):
         ps = [p.ps for n in v.notes for p in n.pitches]
         return sum(ps) / len(ps)
 
-    v = max(voices, key=mean) if policy != "bottom" else min(voices, key=mean)
+    sign = -1 if policy == "bottom" else 1
+    v = max(voices, key=lambda v: (round(sounding(v), 3), sign * mean(v)))
     return [(e.getOffsetBySite(v), e) for e in v.notesAndRests]
 
 
@@ -92,12 +99,25 @@ def _clean_note(n, color: str, shift: int, policy: str, keep_chords: bool, stats
         nn.expressions = list(n.expressions)
         n = nn
         stats.chords_reduced += 1
-    if not n.isRest:
+    if n.isRest:
+        n.style.hideObjectOnPrint = False
+    else:
         n.articulations = [a for a in n.articulations if not isinstance(a, articulations.TechnicalIndication)]
         if shift:
-            n.transpose(interval.Interval(12 * shift), inPlace=True)
+            for p in n.pitches:  # change the octave number: keeps the spelling (D-flat stays D-flat)
+                p.octave += shift
         n.style.color = color
     return n
+
+
+def respell(part: stream.Part) -> None:
+    """Recompute which accidentals are shown, bar by bar against the key signature. Copied notes
+    carry their source bar's display decisions, which are wrong in a new bar or octave."""
+    for n in part.recurse().notes:
+        for p in n.pitches:
+            if p.accidental is not None:
+                p.accidental.displayStatus = None
+    makeNotation.makeAccidentalsInMeasureStream(part, useKeySignature=True, overrideStatus=True)
 
 
 def _fill(ex: Excerpt, player_measure: stream.Measure, src: stream.Measure, color: str, shift: int,
@@ -120,6 +140,10 @@ def _empty_part(ex: Excerpt, player: Player) -> stream.Part:
     part.insert(0, _make_instrument(player, with_transposition=False))
     for i, tm in enumerate(_template(ex)):
         m = stream.Measure(number=tm.number)
+        m.paddingLeft = tm.paddingLeft
+        m.paddingRight = tm.paddingRight
+        if tm.numberSuffix:
+            m.numberSuffix = tm.numberSuffix
         for cls in ("KeySignature", "TimeSignature"):
             for el in tm.getElementsByClass(cls):
                 m.insert(el.getOffsetBySite(tm), copy.deepcopy(el))
@@ -132,8 +156,9 @@ def _empty_part(ex: Excerpt, player: Player) -> stream.Part:
                 ts = tm.getContextByClass("TimeSignature")
                 if ts:
                     m.insert(0, copy.deepcopy(ts))
-        r = note.Rest(quarterLength=tm.highestTime or tm.barDuration.quarterLength)
-        r.fullMeasure = True
+        length = tm.highestTime or tm.barDuration.quarterLength
+        r = note.Rest(quarterLength=length)
+        r.fullMeasure = abs(length - tm.barDuration.quarterLength) < 1e-6
         m.insert(0, r)
         part.append(m)
     return part
@@ -155,6 +180,17 @@ def _fix_ties(part: stream.Part) -> None:
         ns[-1].tie = None
 
 
+def _active_dynamic(ex: Excerpt, pid: str, number: int):
+    last = None
+    for m in ex.part(pid).part.getElementsByClass(stream.Measure):
+        if m.number == number:
+            break
+        ds = list(m.getElementsByClass(dynamics.Dynamic))
+        if ds:
+            last = ds[-1]
+    return last
+
+
 def execute(plan: dict, ex: Excerpt, roster: Roster) -> Execution:
     colors = {sp.id: sp.color for sp in ex.parts}
     parts = {p.id: _empty_part(ex, p) for p in roster.players}
@@ -170,9 +206,18 @@ def execute(plan: dict, ex: Excerpt, roster: Roster) -> Execution:
                 continue
             _fill(ex, pm[num], src, colors[a["source_part"]], int(a.get("octave_shift", 0)),
                   a.get("chord_policy", "top"), keep, out)
+            if num == a["start_measure"]:
+                first_note = min((float(n.getOffsetBySite(pm[num])) for n in pm[num].notes), default=None)
+                has_dyn = any(float(d.getOffsetBySite(pm[num])) <= (first_note or 0)
+                              for d in pm[num].getElementsByClass(dynamics.Dynamic))
+                if first_note is not None and not has_dyn:
+                    d = _active_dynamic(ex, a["source_part"], num)
+                    if d is not None:
+                        pm[num].insert(0, copy.deepcopy(d))
             owner[(player.id, num)] = idx
     for pid, part in parts.items():
         _fix_ties(part)
+        respell(part)
         player = roster.player(pid)
         for n in part.recurse().notes:
             mnum = n.getContextByClass(stream.Measure).number
@@ -199,6 +244,7 @@ def fold_out_of_range(exe: Execution, roster: Roster) -> None:
                     moved = True
                 if moved:
                     exe.notes_folded += 1
+        respell(part)
     exe.violations = []
     for pid, part in exe.parts.items():
         player = roster.player(pid)
@@ -283,8 +329,8 @@ def _measure_notes(part: stream.Part, number: int) -> list[tuple[float, float, f
     for m in part.getElementsByClass(stream.Measure):
         if m.number == number:
             out = []
-            for n in m.notes:
-                s = float(n.getOffsetBySite(m))
+            for n in m.recurse().notes:  # include notes inside Voice objects
+                s = float(n.getOffsetInHierarchy(m))
                 e = s + float(n.duration.quarterLength)
                 if e > s:
                     out.append((s, e, min(p.ps for p in n.pitches)))
@@ -293,44 +339,57 @@ def _measure_notes(part: stream.Part, number: int) -> list[tuple[float, float, f
 
 
 def voicing_issues(plan: dict, exe: Execution, ex: Excerpt, roster: Roster) -> list[dict]:
-    """Texture inversions: moments where some player sounds BELOW the player carrying the original
-    bass line (the source line with the lowest note in that bar), or the bass line is missing."""
-    by_player: dict[str, dict] = {}
+    """Texture inversions, measured against the original moment by moment: at each instant, the
+    source line sounding the lowest note in the ORIGINAL is the bass. A cover note is "under the
+    bass" if it sounds below every player carrying that line at that instant. The original rendered
+    one line per player therefore scores 0 by construction. "bass_missing" bars are bars where the
+    original's bass line is not assigned to anyone."""
+    order = {sp.id: i for i, sp in enumerate(ex.parts)}
+    by_key: dict = {}
+
+    def entry(key, base):
+        return by_key.setdefault(key, base | {"measures": [], "events": 0, "max_semitones": 0, "_seen": set()})
+
     for num in ex.measure_numbers:
-        lows = {}
-        for sp in ex.parts:
-            notes = _measure_notes(sp.part, num)
-            if notes:
-                lows[sp.id] = min(ps for _, _, ps in notes)
-        if not lows:
-            continue
-        bass_src = min(lows, key=lows.get)
-        carriers = [a["player"] for a in plan["assignments"]
-                    if a["source_part"] == bass_src and a["start_measure"] <= num <= a["end_measure"]]
-        if not carriers:
-            k = ("(none)", bass_src)
-            d = by_player.setdefault(k, {"player": None, "bass_line": bass_src, "kind": "bass_missing",
-                                         "measures": [], "events": 0, "max_semitones": 0})
-            d["measures"].append(num)
-            continue
-        bass_notes = [x for c in carriers for x in _measure_notes(exe.parts[c], num)]
-        for p in roster.players:
-            if p.id in carriers:
+        orig = {sp.id: _measure_notes(sp.part, num) for sp in ex.parts}
+        cover = {p.id: _measure_notes(exe.parts[p.id], num) for p in roster.players}
+        cuts = sorted({t for notes in list(orig.values()) + list(cover.values()) for s0, e0, _ in notes for t in (s0, e0)})
+        for t0, t1 in zip(cuts, cuts[1:]):
+            if t1 - t0 < 1e-6:
                 continue
-            for s, e, ps in _measure_notes(exe.parts[p.id], num):
-                under = [b_ps - ps for bs, be, b_ps in bass_notes if bs < e and s < be and b_ps > ps]
-                if under:
-                    k = (p.id, bass_src)
-                    d = by_player.setdefault(k, {"player": p.id, "bass_line": f"{bass_src} on {'/'.join(carriers)}",
-                                                 "kind": "below_bass", "measures": [], "events": 0,
-                                                 "max_semitones": 0})
-                    if num not in d["measures"]:
-                        d["measures"].append(num)
-                    d["events"] += 1
-                    d["max_semitones"] = max(d["max_semitones"], max(under))
+            sounding = [(ps, -order[pid], pid) for pid, notes in orig.items()
+                        for s0, e0, ps in notes if s0 <= t0 < e0]
+            if not sounding:
+                continue
+            bass_src = min(sounding)[2]  # lowest pitch; ties go to the lower-sounding (later) part
+            carriers = [a["player"] for a in plan["assignments"]
+                        if a["source_part"] == bass_src and a["start_measure"] <= num <= a["end_measure"]]
+            if not carriers:
+                d = entry(("bass_missing", bass_src), {"player": None, "bass_line": bass_src, "kind": "bass_missing"})
+                if num not in d["measures"]:
+                    d["measures"].append(num)
+                continue
+            bass_now = [ps for c in carriers for s0, e0, ps in cover[c] if s0 <= t0 < e0]
+            if not bass_now:
+                continue
+            floor = min(bass_now)
+            for p in roster.players:
+                if p.id in carriers:
+                    continue
+                for s0, e0, ps in cover[p.id]:
+                    if s0 <= t0 < e0 and ps < floor:
+                        d = entry(("below_bass", p.id), {"player": p.id, "kind": "below_bass",
+                                                         "bass_line": f"{bass_src} on {'/'.join(carriers)}"})
+                        if (num, s0, ps) not in d["_seen"]:
+                            d["_seen"].add((num, s0, ps))
+                            d["events"] += 1
+                        if num not in d["measures"]:
+                            d["measures"].append(num)
+                        d["max_semitones"] = max(d["max_semitones"], floor - ps)
     from .plan import _ranges
     out = []
-    for d in by_player.values():
+    for d in by_key.values():
+        d.pop("_seen")
         d["measures"] = _ranges(sorted(d["measures"]))
         out.append(d)
     return out

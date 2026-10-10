@@ -136,7 +136,10 @@ def validate(plan: dict, ex: Excerpt, roster: Roster) -> PlanProblems:
 def role_problems(plan: dict, ex: Excerpt) -> list[str]:
     """The planner's own labels, held against it: a span it calls melody or bass may not be dropped."""
     errs = []
+    known = {sp.id for sp in ex.parts}
     for d in plan.get("dropped", []):
+        if d.get("source_part") not in known:
+            continue  # validate() reports unknown ids
         sounding = sounding_measures(ex, d["source_part"])
         for r in plan.get("roles", []):
             if r["source_part"] != d["source_part"] or r["role"] not in ("melody", "bass"):

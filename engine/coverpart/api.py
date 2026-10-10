@@ -41,7 +41,7 @@ def api_arrange(req: ArrangeRequest) -> dict:
         raise HTTPException(400, "planner must be ai or greedy")
     try:
         roster = Roster.from_json(req.roster)
-    except (KeyError, ValueError) as e:
+    except (KeyError, ValueError, TypeError, AttributeError) as e:
         raise HTTPException(400, f"bad roster: {e}") from e
     if not 1 <= len(roster.players) <= 8:
         raise HTTPException(400, "roster must have 1-8 players")

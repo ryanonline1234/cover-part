@@ -122,3 +122,82 @@ def test_voicing_detects_line_moved_under_bass(ex):
         return sum(v["events"] for v in ex_mod.voicing_issues(p, exe, ex, roster) if v["kind"] == "below_bass")
     assert events(bad) > events(ok)
     assert events(bad) > 10
+
+
+# --- regressions for the 2026-10-10 adversarial review -------------------------------------------
+import json as _json
+
+from music21 import note as _note
+
+from coverpart.arrange import _autofix, arrange
+from coverpart.export import original_score, to_musicxml
+
+MANIFEST = _json.loads((Path(__file__).parents[2] / "corpus" / "manifest.json").read_text())
+
+
+def _load(eid):
+    e = next(x for x in MANIFEST["excerpts"] if x["id"] == eid)
+    return load_excerpt(Path(__file__).parents[2] / "corpus" / e["file"], e["start_measure"], e["end_measure"], meta=e)
+
+
+@pytest.mark.parametrize("eid", ["osq-haydn-op76no3-ii-m0-20", "osq-haydn-op20no2-i-m0-14", "osq-haydn-op76no3-ii-m40-60"])
+def test_pickup_and_split_bars_keep_their_length(eid):
+    ex = _load(eid)
+    res = arrange(ex, PRESETS["winds4"], "greedy", log=lambda m: None)
+    bars = lambda xml: [float(m.duration.quarterLength) for m in
+                        converter.parseData(xml).parts[0].getElementsByClass(stream.Measure)]
+    want = bars(res["musicxml"]["original"])
+    assert bars(res["musicxml"]["arranged"]) == want
+    for xml in res["musicxml"]["parts"].values():
+        assert bars(xml) == want
+
+
+def test_octave_shift_keeps_spelling():
+    from coverpart.execute import Execution, _clean_note
+    n = _clean_note(_note.Note("D-6"), "#000", -1, "top", False, Execution(stream.Score(), {}))
+    assert n.pitch.nameWithOctave == "D-5"
+
+
+def test_shifted_line_shows_needed_naturals():
+    ex = _load("osq-hensel-eflat-iii-m1-16")
+    roster = PRESETS["no_viola"]
+    plan = greedy_plan(ex, summarize(ex), roster)
+    exe = ex_mod.execute(plan, ex, roster)
+    for m in exe.parts["vn2"].getElementsByClass(stream.Measure):
+        if m.number == 5:
+            bs = [n.pitch for n in m.notes if isinstance(n, _note.Note) and n.pitch.step == "B"]
+            assert bs and bs[0].accidental is not None and bs[0].accidental.name == "natural"
+            assert bs[0].accidental.displayStatus is True
+
+
+@pytest.mark.parametrize("eid", [e["id"] for e in MANIFEST["excerpts"]])
+def test_original_voicing_has_no_inversions(eid):
+    ex = _load(eid)
+    roster = Roster("id", "id", [Player(f"x{k}", ["violin", "violin", "viola", "cello"][k], "advanced") for k in range(4)])
+    plan = {"summary": "", "roles": [], "dropped": [], "assignments": [
+        {"source_part": f"P{k + 1}", "start_measure": ex.start_measure, "end_measure": ex.end_measure,
+         "player": f"x{k}", "octave_shift": 0, "chord_policy": "keep", "reason": ""} for k in range(4)]}
+    exe = ex_mod.execute(plan, ex, roster)
+    assert sum(v["events"] for v in ex_mod.voicing_issues(plan, exe, ex, roster) if v["kind"] == "below_bass") == 0
+
+
+def test_autofix_trims_only_the_clash_and_survives_unknown_ids(ex):
+    roster = PRESETS["winds4"]
+    plan = {"summary": "", "roles": [{"source_part": "P1", "start_measure": 1, "end_measure": 12, "role": "melody"}],
+            "dropped": [{"source_part": "P9", "start_measure": 1, "end_measure": 2, "reason": "?"}],
+            "assignments": [
+                {"source_part": "P2", "start_measure": 1, "end_measure": 12, "player": "fl", "octave_shift": 0, "chord_policy": "top", "reason": ""},
+                {"source_part": "P1", "start_measure": 5, "end_measure": 12, "player": "fl", "octave_shift": 0, "chord_policy": "top", "reason": ""},
+                {"source_part": "P3", "start_measure": 1, "end_measure": 12, "player": "nobody", "octave_shift": 0, "chord_policy": "top", "reason": ""},
+                {"source_part": "P9", "start_measure": 1, "end_measure": 12, "player": "cl", "octave_shift": 0, "chord_policy": "top", "reason": ""}]}
+    fixed = _autofix(plan, ex, roster)
+    assert validate(fixed, ex, roster).ok
+    fl = sorted((a["source_part"], a["start_measure"], a["end_measure"]) for a in fixed["assignments"] if a["player"] == "fl")
+    assert fl == [("P1", 5, 12), ("P2", 1, 4)]  # the melody keeps its bars; only the clash is trimmed
+
+
+def test_roster_rejects_duplicates_and_narrow_overrides():
+    with pytest.raises(ValueError):
+        Roster.from_json({"players": [{"id": "a", "instrument": "flute"}, {"id": "a", "instrument": "oboe"}]})
+    with pytest.raises(ValueError):
+        Player("a", "flute", range_override=("C4", "G4"))

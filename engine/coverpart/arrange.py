@@ -1,5 +1,6 @@
-"""The pipeline: summarize → plan → validate (→ revise) → execute → range check (→ revise) →
-whole-phrase octave repair → single-note fold (last resort) → export."""
+"""The pipeline: summarize → plan → validate (→ revise) → finish (execute, phrase-level octave
+repair, single-note folds) → score → AI revision for leftover range / voicing problems, kept only if
+the finished revision has fewer problems → export."""
 
 from __future__ import annotations
 
@@ -13,31 +14,89 @@ from .roster import Roster
 from .score_io import Excerpt, summarize
 
 
-def _autofix(plan: dict, ex: Excerpt, roster: Roster, errors: list[str]) -> dict:
+def _runs(nums: list[int]) -> list[tuple[int, int]]:
+    out = []
+    for n in nums:
+        if out and n == out[-1][1] + 1:
+            out[-1] = (out[-1][0], n)
+        else:
+            out.append((n, n))
+    return out
+
+
+def _autofix(plan: dict, ex: Excerpt, roster: Roster) -> dict:
     """If a planner still leaves structural errors, make the plan valid without inventing music:
-    drop later overlapping assignments and mark unaddressed measures as dropped."""
+    discard entries with unknown ids, clamp spans to the excerpt, trim only the double-booked bars
+    (spans the plan calls melody or bass keep their bars first), and mark unaddressed bars dropped."""
+    from .plan import CHORD_POLICIES, sounding_measures
     plan = copy.deepcopy(plan)
-    busy, kept = set(), []
-    for a in plan["assignments"]:
-        span = {(a["player"], m) for m in range(a["start_measure"], a["end_measure"] + 1)}
-        if span & busy:
-            plan.setdefault("dropped", []).append({
-                "source_part": a["source_part"], "start_measure": a["start_measure"],
-                "end_measure": a["end_measure"], "reason": "checker: planner double-booked a player here"})
+    part_ids = {sp.id for sp in ex.parts}
+    player_ids = {p.id for p in roster.players}
+    lo, hi = ex.start_measure, ex.end_measure
+    dropped = []
+    for d in plan.get("dropped", []):
+        if d.get("source_part") in part_ids:
+            s0, e0 = max(lo, int(d["start_measure"])), min(hi, int(d["end_measure"]))
+            if s0 <= e0:
+                dropped.append(dict(d, start_measure=s0, end_measure=e0))
+    roles = [r for r in plan.get("roles", []) if r.get("source_part") in part_ids]
+
+    def essential(a):
+        return any(r["source_part"] == a["source_part"] and r["role"] in ("melody", "bass")
+                   and r["start_measure"] <= a["end_measure"] and r["end_measure"] >= a["start_measure"]
+                   for r in roles)
+
+    cand = []
+    for a in plan.get("assignments", []):
+        if a.get("source_part") not in part_ids:
             continue
-        busy |= span
-        kept.append(a)
+        s0, e0 = max(lo, int(a["start_measure"])), min(hi, int(a["end_measure"]))
+        if s0 > e0:
+            continue
+        if a.get("player") not in player_ids:
+            dropped.append({"source_part": a["source_part"], "start_measure": s0, "end_measure": e0,
+                            "reason": f"checker: unknown player {a.get('player')!r}"})
+            continue
+        cand.append(dict(a, start_measure=s0, end_measure=e0,
+                         octave_shift=max(-3, min(3, int(a.get("octave_shift", 0)))),
+                         chord_policy=a.get("chord_policy") if a.get("chord_policy") in CHORD_POLICIES else "top"))
+    busy, kept = set(), []
+    for a in sorted(cand, key=lambda a: 0 if essential(a) else 1):
+        span = range(a["start_measure"], a["end_measure"] + 1)
+        free = [m for m in span if (a["player"], m) not in busy]
+        clash = [m for m in span if (a["player"], m) in busy]
+        for s0, e0 in _runs(free):
+            kept.append(dict(a, start_measure=s0, end_measure=e0))
+            busy |= {(a["player"], m) for m in range(s0, e0 + 1)}
+        for s0, e0 in _runs(clash):
+            dropped.append({"source_part": a["source_part"], "start_measure": s0, "end_measure": e0,
+                            "reason": "checker: this player was double-booked here"})
+    kept.sort(key=lambda a: (a["source_part"], a["start_measure"]))
     plan["assignments"] = kept
-    from .plan import sounding_measures
+    plan["dropped"] = dropped
+    plan["roles"] = roles
     for sp in ex.parts:
         have = set()
-        for a in plan["assignments"] + plan.get("dropped", []):
+        for a in plan["assignments"] + plan["dropped"]:
             if a["source_part"] == sp.id:
                 have |= set(range(a["start_measure"], a["end_measure"] + 1))
-        for m in sorted(sounding_measures(ex, sp.id) - have):
-            plan["dropped"].append({"source_part": sp.id, "start_measure": m, "end_measure": m,
-                                    "reason": "checker: planner did not address this measure"})
+        for s0, e0 in _runs(sorted(sounding_measures(ex, sp.id) - have)):
+            plan["dropped"].append({"source_part": sp.id, "start_measure": s0, "end_measure": e0,
+                                    "reason": "checker: planner did not address these bars"})
     return plan
+
+
+def measures_dropped(plan: dict, ex: Excerpt) -> int:
+    """Bars of music (part × bar with notes) that no player plays."""
+    from .plan import sounding_measures
+    n = 0
+    for sp in ex.parts:
+        have = set()
+        for a in plan["assignments"]:
+            if a["source_part"] == sp.id:
+                have |= set(range(a["start_measure"], a["end_measure"] + 1))
+        n += len(sounding_measures(ex, sp.id) - have)
+    return n
 
 
 def melody_coverage(plan: dict, ex: Excerpt, melody_map: list[dict]) -> float | None:
@@ -88,6 +147,15 @@ def bass_preserved(orig, arranged) -> float:
     return round(kept / total, 3) if total else 1.0
 
 
+BASS_MISSING_WEIGHT = 12  # a bar with no bass line at all counts like 12 problem notes (disclosed in DECISIONS.md)
+
+
+def total_problems(b: dict) -> int:
+    """Problems left after the deterministic repairs: notes that still had to be folded one by one,
+    notes under the bass, and bars with no bass (weighted)."""
+    return b["out_of_range"] + b["under_bass"] + BASS_MISSING_WEIGHT * b["bass_missing_bars"]
+
+
 def handoffs(plan: dict) -> int:
     """How many times a source line changes hands between players (continuity; lower is calmer)."""
     n = 0
@@ -109,6 +177,8 @@ def arrange(ex: Excerpt, roster: Roster, planner: str = "greedy", piece: dict | 
     summary = summarize(ex, seg_len)
     revisions = 0
     used_model = None
+    revision_log: list[dict] = []
+    session = None
     if planner == "fixed":
         plan = copy.deepcopy(fixed_plan)
         used_model = model
@@ -120,69 +190,91 @@ def arrange(ex: Excerpt, roster: Roster, planner: str = "greedy", piece: dict | 
         plan = session.first_plan()
         used_model = session.model_name
         for _ in range(2):
-            errors = validate(plan, ex, roster).errors + role_problems(plan, ex)
+            try:
+                errors = validate(plan, ex, roster).errors + role_problems(plan, ex)
+            except Exception as e:  # noqa: BLE001 - a malformed plan is a problem to report, not a crash
+                errors = [f"plan could not be checked: {type(e).__name__}: {e}"]
             if not errors:
                 break
             log(f"  plan has {len(errors)} structural/role problem(s); asking the planner to revise")
-            plan = session.revise(plan, errors, kind="structure")
-            revisions += 1
+            try:
+                plan = session.revise(plan, errors, kind="structure")
+                revisions += 1
+            except Exception as e:  # noqa: BLE001
+                revision_log.append({"kind": "structure", "kept": False, "before": None, "after": None,
+                                     "why": f"planner call failed: {type(e).__name__}"})
+                log(f"  structure revision failed: {e}")
+                break
     else:
         raise ValueError(planner)
 
-    problems = validate(plan, ex, roster)
-    if not problems.ok:
-        log(f"  autofixing {len(problems.errors)} remaining structural problem(s)")
-        plan = _autofix(plan, ex, roster, problems.errors)
+    try:
+        problems_ok = validate(plan, ex, roster).ok
+    except Exception:  # noqa: BLE001
+        problems_ok = False
+    if not problems_ok:
+        log("  autofixing remaining structural problems")
+        plan = _autofix(plan, ex, roster)
+    role_left = role_problems(plan, ex)
 
-    exe = ex_mod.execute(plan, ex, roster)
-    before = len(exe.violations)
-    revision_log: list[dict] = []
-
-    def badness(p, e):
+    def finish(p: dict):
+        """Every candidate plan gets the same deterministic repairs before it is scored: whole-
+        phrase octave repair, then single-note folds as a last resort."""
+        e = ex_mod.execute(p, ex, roster)
+        raw = len(e.violations)
+        if e.violations:
+            p2, changed = ex_mod.best_octave_repair(p, ex, roster, seg_len)
+            if changed:
+                p, e = p2, ex_mod.execute(p2, ex, roster)
+        unfit = [v.to_json(roster) for v in e.violations]
+        if e.violations:
+            ex_mod.fold_out_of_range(e, roster)
         v = ex_mod.voicing_issues(p, e, ex, roster)
-        return {"out_of_range": len(e.violations),
-                "under_bass": sum(x["events"] for x in v if x["kind"] == "below_bass"),
-                "bass_missing_bars": sum(1 for x in v if x["kind"] == "bass_missing")}, v
+        bad = {"out_of_range_raw": raw, "out_of_range": len(unfit), "folded": e.notes_folded,
+               "under_bass": sum(x["events"] for x in v if x["kind"] == "below_bass"),
+               "bass_missing_bars": sum(1 for x in v if x["kind"] == "bass_missing")}
+        return p, e, bad, v, unfit
 
-    def try_revision(kind, problems):
-        """The checker has the last word: a revision is kept only if it is structurally valid and
-        makes no measured problem worse."""
-        nonlocal plan, exe, revisions
-        revised = session.revise(plan, problems, kind=kind)
+    plan, exe, bad, voicing, unfit = finish(plan)
+    first = dict(bad)
+
+    def try_revision(kind: str, problems: list) -> None:
+        """The checker has the last word: a revision is kept only if it is structurally valid and,
+        after the same deterministic repairs, leaves fewer problems in total."""
+        nonlocal plan, exe, bad, voicing, unfit, revisions
+        try:
+            revised = session.revise(plan, problems, kind=kind)
+        except Exception as e:  # noqa: BLE001 - keep the valid plan we already have
+            revision_log.append({"kind": kind, "kept": False, "before": dict(bad), "after": None,
+                                 "why": f"planner call failed: {type(e).__name__}"})
+            log(f"  {kind} revision failed: {e}")
+            return
         revisions += 1
-        errs = validate(revised, ex, roster).errors + role_problems(revised, ex)
-        old, _ = badness(plan, exe)
+        try:
+            errs = validate(revised, ex, roster).errors + role_problems(revised, ex)
+        except Exception as e:  # noqa: BLE001
+            errs = [f"{type(e).__name__}: {e}"]
         if errs:
-            revision_log.append({"kind": kind, "kept": False, "why": f"{len(errs)} structural/role problem(s)",
-                                 "before": old, "after": None})
+            revision_log.append({"kind": kind, "kept": False, "before": dict(bad), "after": None,
+                                 "why": f"{len(errs)} structural/role problem(s)"})
             log(f"  {kind} revision rejected: {errs[:2]}")
             return
-        new_exe = ex_mod.execute(revised, ex, roster)
-        new, _ = badness(revised, new_exe)
-        worse = [k for k in old if new[k] > old[k]]
-        kept = not worse
-        revision_log.append({"kind": kind, "kept": kept, "before": old, "after": new,
-                             "why": "no measured problem got worse" if kept else f"made {', '.join(worse)} worse"})
-        log(f"  {kind} revision {'kept' if kept else 'rejected'}: {old} -> {new}")
+        p2, e2, b2, v2, u2 = finish(revised)
+        t_old, t_new = total_problems(bad), total_problems(b2)
+        kept = t_new < t_old
+        revision_log.append({"kind": kind, "kept": kept, "before": dict(bad), "after": b2,
+                             "total_before": t_old, "total_after": t_new,
+                             "why": f"problems {t_old} -> {t_new}" + ("" if kept else " (not fewer)")})
+        log(f"  {kind} revision {'kept' if kept else 'rejected'}: {t_old} -> {t_new}")
         if kept:
-            plan, exe = revised, new_exe
+            plan, exe, bad, voicing, unfit = p2, e2, b2, v2, u2
 
-    if before and planner == "ai":
-        log(f"  {before} note(s) out of range; asking the planner to revise")
-        try_revision("range", [v.to_json(roster) for v in exe.violations])
-    _, voicing_before = badness(plan, exe)
-    if planner == "ai" and any(v["kind"] == "bass_missing" or v["max_semitones"] >= 3 for v in voicing_before):
-        log(f"  {len(voicing_before)} voicing problem(s); asking the planner to revise")
-        try_revision("voicing", voicing_before)
-    after_ai = len(exe.violations)
-    if exe.violations:
-        plan, changed = ex_mod.best_octave_repair(plan, ex, roster, seg_len)
-        if changed:
-            exe = ex_mod.execute(plan, ex, roster)
-    after_octave = len(exe.violations)
-    if exe.violations:
-        ex_mod.fold_out_of_range(exe, roster)
-    voicing_final = ex_mod.voicing_issues(plan, exe, ex, roster)
+    if planner == "ai" and unfit:
+        log(f"  {len(unfit)} note(s) still out of range after octave repair; asking the planner to revise")
+        try_revision("range", unfit)
+    if planner == "ai" and any(v["kind"] == "bass_missing" or v["max_semitones"] >= 3 for v in voicing):
+        log(f"  {len(voicing)} voicing problem(s); asking the planner to revise")
+        try_revision("voicing", voicing)
     sc = ex_mod.assemble(ex, exe, roster)
 
     title = piece.get("title", "Excerpt")
@@ -192,9 +284,11 @@ def arrange(ex: Excerpt, roster: Roster, planner: str = "greedy", piece: dict | 
     checks = {
         "notes_total": exe.notes_total,
         "notes_out_of_range": len(exe.violations),
-        "notes_out_of_range_before_repair": before,
-        "notes_out_of_range_after_ai_revision": after_ai,
-        "notes_out_of_range_after_octave_repair": after_octave,
+        "first_plan": first,
+        "final": bad,
+        "notes_out_of_range_before_repair": first["out_of_range_raw"],
+        "notes_out_of_range_after_ai_revision": bad["out_of_range_raw"],
+        "notes_out_of_range_after_octave_repair": bad["out_of_range"],
         "notes_folded": exe.notes_folded,
         "chords_reduced": exe.chords_reduced,
         "repair_rounds": revisions,
@@ -204,9 +298,11 @@ def arrange(ex: Excerpt, roster: Roster, planner: str = "greedy", piece: dict | 
             "bass": bass_preserved(orig, sc),
         },
         "lines_dropped": len(plan.get("dropped", [])),
-        "bass_inversions": sum(v["events"] for v in voicing_final if v["kind"] == "below_bass"),
-        "bass_inversions_before_revision": sum(v["events"] for v in voicing_before if v["kind"] == "below_bass"),
-        "voicing_issues": voicing_final,
+        "measures_dropped": measures_dropped(plan, ex),
+        "bass_inversions": bad["under_bass"],
+        "bass_inversions_before_revision": first["under_bass"],
+        "voicing_issues": voicing,
+        "role_problems_left": role_left,
         "handoffs": handoffs(plan),
         "violations": [v.to_json(roster) for v in exe.violations],
     }
