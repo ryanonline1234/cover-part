@@ -50,3 +50,9 @@ A four-lens review confirmed 17 problems. Two changed the evidence.
 
 ## 2026-10-10 — Arranger rules stay as written; video next
 Ryan decided not to rewrite arranger_rules.md: he isn't a musician, so hand-written musical rules from him wouldn't be better grounded. The why-page prose is deferred too. The demo video proceeds on the current site, and its narration credits Ryan only with what he did (picked the project, chose the redesign and band-folder layout, asked for the why page, decided live-vs-precomputed, approved publishing).
+
+## 2026-10-10 — Pre-recording upgrades: upload your own score; AI best-of-3 chosen by the checker
+Ryan invited last-minute changes that would make a real difference before the video is recorded.
+- **Upload your own score.** A director can upload MusicXML (the format MuseScore, Finale and Sibelius export), choose a movement and up to 32 bars, and get live, checked rule-based parts. Nothing is stored. This was the director reviewer's main blocker to real use.
+- **AI best-of-3.** For the precomputed preset results, the AI writes 3 independent plans, and each goes through the same revision loop and repairs. The checker keeps the one with the fewest problems (the revision-gate formula; ties go to fewer line-bars left out, then fewer hand-offs). This addresses the honest weakness of single AI runs (e.g. 91 notes under the bass on one plan). Generate-and-verify is the project's own principle.
+- **Guarding against inflated comparisons.** Selection never looks at the reference melody maps. The reported "first plan" metric uses the unselected first candidate's first draft, so the AI-vs-baseline first-draft comparison isn't flattered by selection. The final metrics describe what the product outputs, which is the selected plan.
