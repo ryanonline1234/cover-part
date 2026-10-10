@@ -1,0 +1,519 @@
+{
+  "source": "OpenScore String Quartets (CC0-1.0), https://github.com/OpenScore/StringQuartets, branch main, fetched 2026-10-10",
+  "notes": [
+    "Measure numbers are the printed bar numbers read by music21 (Measure.number). A movement that opens with an anacrusis numbers it 0 (Haydn Op.76/3 II, Op.20/2 I); otherwise numbering starts at 1. The pickup bar is a short Measure (paddingLeft > 0).",
+    "Every file here holds a WHOLE quartet: all movements in one .mxl, one continuous Part per instrument, with measure numbers restarting at each movement (0 or 1). OpenScore does also have per-movement files for a few works (e.g. Mozart K.464 is four .mxl files), but none are used here. movement_index is the 0-based movement within the file, found by measure-number resets.",
+    "Trap: score.measures(start, end) on the full file matches those numbers in EVERY movement (measures(1,2) returned 8 bars per part). extract.load_excerpt therefore selects by 0-based measure index: measure_index_range = [first, last] inclusive, into part.getElementsByClass('Measure'); the same index is valid for all four parts.",
+    "Split measures: a mid-bar double bar or repeat (e.g. each Emperor variation starts with a half-bar pickup) yields two Measure objects with the same number; the second carries numberSuffix 'X1', 'X2', ... Convention in extract.resolve_index_range: a duplicated start number begins at its LAST occurrence (the pickup), a duplicated end number stops at its FIRST occurrence (the closing half-bar). So 'm40-60' for Var. II = pickup half of m.40 through the first half of m.60.",
+    "music21's measures(..., indicesNotNumbers=True) end index is EXCLUSIVE, and it collects Clef/KeySignature at the Part level rather than in the first Measure; load_excerpt moves them into the first measure (pulling from context when missing) so every part's first measure has clef, key and time signature.",
+    "Pitches: string parts are non-transposing and no excerpt contains an ottava spanner, so written = sounding. part_ranges are sounding pitch (computed after toSoundingPitch()) and include chord tones and grace notes.",
+    "Grace notes appear (quarterLength 0, duration.isGrace) in the Dvorak Lento and Hensel Romanza; tempo words are TextExpressions, and MuseScore's hidden playback tempi come through as MetronomeMarks with auto-generated names (e.g. 'lento') that are not in the printed score.",
+    "Part names: the files name the parts 'Violin 1', 'Violin 2', 'Viola', 'Violoncello' (music21 part ids P1-P4, always in that order); the manifest uses 'Violin I', 'Violin II', 'Viola', 'Violoncello'.",
+    "MusicXML round trip (load_excerpt -> write('musicxml') -> parse) preserves part and note counts for all six excerpts, except one dotted-quarter tremolo note in Dvorak Op.96 I m.1 that music21 splits into a tied pair on export (456 -> 457 notes).",
+    "Fingered/measured tremolo: Dvorak Op.96 I mm.1-6 accompaniment is written as alternating F5/A5 values in Violin I and A4/F4 in Violin II (shimmer accompaniment), carried as TremoloSpanner/Tremolo marks; the written durations are not the played rhythm. Hensel Romanza mm.5 and 13 have tremolo marks in Violin II/Viola/Cello.",
+    "melody_map: entries may overlap when two parts are in dialogue (marked in 'note'); bars not covered by any entry have no single melodic line (intro or transition).",
+    "part_stats.notes counts note onsets (tied continuations excluded); chords counts music21 Chord objects (string double stops); chords_in_excerpt is their sum across parts."
+  ],
+  "excerpts": [
+    {
+      "id": "osq-haydn-op76no3-ii-m0-20",
+      "file": "src/sq20428156.mxl",
+      "composer": "Joseph Haydn",
+      "title": "String Quartet in C major, Hob.III:77, Op.76 No.3 (“Emperor”)",
+      "movement": "II. Poco adagio; cantabile — Theme",
+      "movement_index": 1,
+      "start_measure": 0,
+      "end_measure": 20,
+      "measure_index_range": [
+        128,
+        148
+      ],
+      "tempo_hint": "Poco adagio, cantabile (slow hymn, 2/2)",
+      "why": "Easy hero: Haydn's “Emperor” hymn, melody in Violin I over a clean four-part chorale accompaniment.",
+      "melody_map": [
+        {
+          "part": "Violin I",
+          "start_measure": 0,
+          "end_measure": 20
+        }
+      ],
+      "chords_in_excerpt": 8,
+      "part_ranges": {
+        "Violin I": [
+          "D4",
+          "G5"
+        ],
+        "Violin II": [
+          "G3",
+          "C5"
+        ],
+        "Viola": [
+          "F#3",
+          "B4"
+        ],
+        "Violoncello": [
+          "G2",
+          "C4"
+        ]
+      },
+      "part_stats": {
+        "Violin I": {
+          "notes": 98,
+          "chords": 0,
+          "grace": 2,
+          "active_measures": "21/21"
+        },
+        "Violin II": {
+          "notes": 74,
+          "chords": 2,
+          "grace": 0,
+          "active_measures": "21/21"
+        },
+        "Viola": {
+          "notes": 64,
+          "chords": 6,
+          "grace": 2,
+          "active_measures": "21/21"
+        },
+        "Violoncello": {
+          "notes": 61,
+          "chords": 0,
+          "grace": 0,
+          "active_measures": "21/21"
+        }
+      },
+      "license": "CC0-1.0",
+      "source_url": "https://github.com/OpenScore/StringQuartets/blob/main/scores/Haydn,_Joseph/String_Quartet_in_C_major,_Hob.III77,_Op.76_No.3/sq20428156.mxl"
+    },
+    {
+      "id": "osq-haydn-op76no3-ii-m40-60",
+      "file": "src/sq20428156.mxl",
+      "composer": "Joseph Haydn",
+      "title": "String Quartet in C major, Hob.III:77, Op.76 No.3 (“Emperor”)",
+      "movement": "II. Poco adagio; cantabile — Var. II",
+      "movement_index": 1,
+      "start_measure": 40,
+      "end_measure": 60,
+      "measure_index_range": [
+        170,
+        190
+      ],
+      "tempo_hint": "Poco adagio (slow, 4/4)",
+      "why": "Same hymn moved to the cello while Violin I plays a syncopated countermelody above it: a top-voice baseline picks the wrong line.",
+      "melody_map": [
+        {
+          "part": "Violoncello",
+          "start_measure": 40,
+          "end_measure": 60,
+          "note": "hymn tune, octave below the Theme; Violin I countermelody sits above it"
+        }
+      ],
+      "chords_in_excerpt": 6,
+      "part_ranges": {
+        "Violin I": [
+          "F#4",
+          "D6"
+        ],
+        "Violin II": [
+          "G3",
+          "C5"
+        ],
+        "Viola": [
+          "C3",
+          "C4"
+        ],
+        "Violoncello": [
+          "G2",
+          "G4"
+        ]
+      },
+      "part_stats": {
+        "Violin I": {
+          "notes": 145,
+          "chords": 0,
+          "grace": 4,
+          "active_measures": "21/21"
+        },
+        "Violin II": {
+          "notes": 84,
+          "chords": 3,
+          "grace": 0,
+          "active_measures": "21/21"
+        },
+        "Viola": {
+          "notes": 25,
+          "chords": 3,
+          "grace": 0,
+          "active_measures": "18/21"
+        },
+        "Violoncello": {
+          "notes": 105,
+          "chords": 0,
+          "grace": 2,
+          "active_measures": "21/21"
+        }
+      },
+      "license": "CC0-1.0",
+      "source_url": "https://github.com/OpenScore/StringQuartets/blob/main/scores/Haydn,_Joseph/String_Quartet_in_C_major,_Hob.III77,_Op.76_No.3/sq20428156.mxl"
+    },
+    {
+      "id": "osq-dvorak-op96-ii-m1-18",
+      "file": "src/sq8885439.mxl",
+      "composer": "Antonín Dvořák",
+      "title": "String Quartet No.12 in F major, Op.96 (“American”)",
+      "movement": "II. Lento",
+      "movement_index": 1,
+      "start_measure": 1,
+      "end_measure": 18,
+      "measure_index_range": [
+        178,
+        195
+      ],
+      "tempo_hint": "Lento (slow, 6/8)",
+      "why": "Pretty and clear, then a handoff: Violin I sings the theme, then the cello takes it over while Violin I drops to the repeated-note accompaniment on top.",
+      "melody_map": [
+        {
+          "part": "Violin I",
+          "start_measure": 3,
+          "end_measure": 10,
+          "note": "mm.1-2 accompaniment-only intro"
+        },
+        {
+          "part": "Violoncello",
+          "start_measure": 11,
+          "end_measure": 18,
+          "note": "same theme an octave lower; Violin I is top voice but plays accompaniment"
+        }
+      ],
+      "chords_in_excerpt": 14,
+      "part_ranges": {
+        "Violin I": [
+          "E4",
+          "C6"
+        ],
+        "Violin II": [
+          "C4",
+          "D5"
+        ],
+        "Viola": [
+          "C3",
+          "E4"
+        ],
+        "Violoncello": [
+          "C2",
+          "A4"
+        ]
+      },
+      "part_stats": {
+        "Violin I": {
+          "notes": 108,
+          "chords": 3,
+          "grace": 2,
+          "active_measures": "16/18"
+        },
+        "Violin II": {
+          "notes": 176,
+          "chords": 0,
+          "grace": 0,
+          "active_measures": "18/18"
+        },
+        "Viola": {
+          "notes": 132,
+          "chords": 4,
+          "grace": 0,
+          "active_measures": "18/18"
+        },
+        "Violoncello": {
+          "notes": 56,
+          "chords": 7,
+          "grace": 0,
+          "active_measures": "18/18"
+        }
+      },
+      "license": "CC0-1.0",
+      "source_url": "https://github.com/OpenScore/StringQuartets/blob/main/scores/Dvo%C5%99%C3%A1k,_Anton%C3%ADn/String_Quartet_No.12,_Op.96_(%E2%80%9CAmerican%E2%80%9D)/sq8885439.mxl"
+    },
+    {
+      "id": "osq-dvorak-op96-i-m1-20",
+      "file": "src/sq8885439.mxl",
+      "composer": "Antonín Dvořák",
+      "title": "String Quartet No.12 in F major, Op.96 (“American”)",
+      "movement": "I. Allegro ma non troppo",
+      "movement_index": 0,
+      "start_measure": 1,
+      "end_measure": 20,
+      "measure_index_range": [
+        0,
+        19
+      ],
+      "tempo_hint": "Allegro ma non troppo (moderately fast, 4/4)",
+      "why": "The famous viola opening: the theme starts in the viola under violin tremolo, moves to Violin I, then trades between cello and Violin I and cascades up through all four parts.",
+      "melody_map": [
+        {
+          "part": "Viola",
+          "start_measure": 3,
+          "end_measure": 6,
+          "note": "mm.1-2 tremolo intro"
+        },
+        {
+          "part": "Violin I",
+          "start_measure": 7,
+          "end_measure": 10
+        },
+        {
+          "part": "Violoncello",
+          "start_measure": 11,
+          "end_measure": 14,
+          "note": "theme head on beats 1-2, answered by Violin I on beats 3-4"
+        },
+        {
+          "part": "Violin I",
+          "start_measure": 11,
+          "end_measure": 14,
+          "note": "answers the cello (dialogue)"
+        },
+        {
+          "part": "Violoncello",
+          "start_measure": 17,
+          "end_measure": 17,
+          "note": "rising arpeggio motif; mm.15-16 are transitional tremolo/arpeggio texture"
+        },
+        {
+          "part": "Viola",
+          "start_measure": 18,
+          "end_measure": 18,
+          "note": "motif"
+        },
+        {
+          "part": "Violin II",
+          "start_measure": 19,
+          "end_measure": 19,
+          "note": "motif"
+        },
+        {
+          "part": "Violin I",
+          "start_measure": 20,
+          "end_measure": 20,
+          "note": "motif; leads into the tutti restatement at m.21"
+        }
+      ],
+      "chords_in_excerpt": 0,
+      "part_ranges": {
+        "Violin I": [
+          "B-3",
+          "F6"
+        ],
+        "Violin II": [
+          "D4",
+          "D6"
+        ],
+        "Viola": [
+          "C3",
+          "D5"
+        ],
+        "Violoncello": [
+          "D2",
+          "F4"
+        ]
+      },
+      "part_stats": {
+        "Violin I": {
+          "notes": 125,
+          "chords": 0,
+          "grace": 0,
+          "active_measures": "20/20"
+        },
+        "Violin II": {
+          "notes": 131,
+          "chords": 0,
+          "grace": 0,
+          "active_measures": "20/20"
+        },
+        "Viola": {
+          "notes": 106,
+          "chords": 0,
+          "grace": 0,
+          "active_measures": "18/20"
+        },
+        "Violoncello": {
+          "notes": 81,
+          "chords": 0,
+          "grace": 0,
+          "active_measures": "19/20"
+        }
+      },
+      "license": "CC0-1.0",
+      "source_url": "https://github.com/OpenScore/StringQuartets/blob/main/scores/Dvo%C5%99%C3%A1k,_Anton%C3%ADn/String_Quartet_No.12,_Op.96_(%E2%80%9CAmerican%E2%80%9D)/sq8885439.mxl"
+    },
+    {
+      "id": "osq-haydn-op20no2-i-m0-14",
+      "file": "src/sq8088531.mxl",
+      "composer": "Joseph Haydn",
+      "title": "String Quartet in C major, Hob.III:32, Op.20 No.2",
+      "movement": "I. Moderato",
+      "movement_index": 0,
+      "start_measure": 0,
+      "end_measure": 14,
+      "measure_index_range": [
+        0,
+        14
+      ],
+      "tempo_hint": "Moderato (4/4)",
+      "why": "Cello leads in its tenor register above Violin II and viola while Violin I is silent, then Violin I takes over, then Violin II (doubled by viola) carries the line under a Violin I pedal.",
+      "melody_map": [
+        {
+          "part": "Violoncello",
+          "start_measure": 0,
+          "end_measure": 6,
+          "note": "tenor register, above Violin II; Violin I rests mm.1-6"
+        },
+        {
+          "part": "Violin I",
+          "start_measure": 7,
+          "end_measure": 11,
+          "note": "enters on the last eighth of m.6"
+        },
+        {
+          "part": "Violin II",
+          "start_measure": 12,
+          "end_measure": 14,
+          "note": "doubled a third below by Viola; Violin I holds a G5 pedal on top"
+        }
+      ],
+      "chords_in_excerpt": 0,
+      "part_ranges": {
+        "Violin I": [
+          "G4",
+          "D6"
+        ],
+        "Violin II": [
+          "G3",
+          "D6"
+        ],
+        "Viola": [
+          "C3",
+          "E5"
+        ],
+        "Violoncello": [
+          "G2",
+          "G4"
+        ]
+      },
+      "part_stats": {
+        "Violin I": {
+          "notes": 51,
+          "chords": 0,
+          "grace": 1,
+          "active_measures": "9/15"
+        },
+        "Violin II": {
+          "notes": 87,
+          "chords": 0,
+          "grace": 0,
+          "active_measures": "14/15"
+        },
+        "Viola": {
+          "notes": 97,
+          "chords": 0,
+          "grace": 0,
+          "active_measures": "14/15"
+        },
+        "Violoncello": {
+          "notes": 54,
+          "chords": 0,
+          "grace": 0,
+          "active_measures": "11/15"
+        }
+      },
+      "license": "CC0-1.0",
+      "source_url": "https://github.com/OpenScore/StringQuartets/blob/main/scores/Haydn,_Joseph/String_Quartet_in_C_major,_Hob.III32,_Op.20_No.2/sq8088531.mxl"
+    },
+    {
+      "id": "osq-hensel-eflat-iii-m1-16",
+      "file": "src/sq7577795.mxl",
+      "composer": "Fanny Hensel (Mendelssohn)",
+      "title": "String Quartet in E-flat major",
+      "movement": "III. Romanza",
+      "movement_index": 2,
+      "start_measure": 1,
+      "end_measure": 16,
+      "measure_index_range": [
+        251,
+        266
+      ],
+      "tempo_hint": "Molto cantabile (slow-moderate, 4/4)",
+      "why": "Fanny Hensel's Romanza: Violin I states the theme, the viola echoes a phrase, then the cello restates the theme in its high tenor register under a Violin I countermelody.",
+      "melody_map": [
+        {
+          "part": "Violin I",
+          "start_measure": 1,
+          "end_measure": 9
+        },
+        {
+          "part": "Viola",
+          "start_measure": 10,
+          "end_measure": 10,
+          "note": "echoes Violin I's m.9 figure a fifth lower"
+        },
+        {
+          "part": "Violin I",
+          "start_measure": 11,
+          "end_measure": 12
+        },
+        {
+          "part": "Violoncello",
+          "start_measure": 13,
+          "end_measure": 16,
+          "note": "theme an octave below the opening, up to D5; Violin I countermelody above"
+        }
+      ],
+      "chords_in_excerpt": 12,
+      "part_ranges": {
+        "Violin I": [
+          "D4",
+          "D6"
+        ],
+        "Violin II": [
+          "G3",
+          "G5"
+        ],
+        "Viola": [
+          "D3",
+          "C5"
+        ],
+        "Violoncello": [
+          "E2",
+          "D5"
+        ]
+      },
+      "part_stats": {
+        "Violin I": {
+          "notes": 116,
+          "chords": 0,
+          "grace": 4,
+          "active_measures": "16/16"
+        },
+        "Violin II": {
+          "notes": 72,
+          "chords": 12,
+          "grace": 0,
+          "active_measures": "16/16"
+        },
+        "Viola": {
+          "notes": 69,
+          "chords": 0,
+          "grace": 1,
+          "active_measures": "16/16"
+        },
+        "Violoncello": {
+          "notes": 80,
+          "chords": 0,
+          "grace": 1,
+          "active_measures": "16/16"
+        }
+      },
+      "license": "CC0-1.0",
+      "source_url": "https://github.com/OpenScore/StringQuartets/blob/main/scores/Hensel,_Fanny_(Mendelssohn)/String_Quartet_in_E-flat_major,_Op._277/sq7577795.mxl"
+    }
+  ]
+}

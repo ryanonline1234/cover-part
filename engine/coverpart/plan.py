@@ -133,6 +133,24 @@ def validate(plan: dict, ex: Excerpt, roster: Roster) -> PlanProblems:
     return pr
 
 
+def role_problems(plan: dict, ex: Excerpt) -> list[str]:
+    """The planner's own labels, held against it: a span it calls melody or bass may not be dropped."""
+    errs = []
+    for d in plan.get("dropped", []):
+        sounding = sounding_measures(ex, d["source_part"])
+        for r in plan.get("roles", []):
+            if r["source_part"] != d["source_part"] or r["role"] not in ("melody", "bass"):
+                continue
+            lo, hi = max(d["start_measure"], r["start_measure"]), min(d["end_measure"], r["end_measure"])
+            hit = [m for m in range(lo, hi + 1) if m in sounding]
+            if hit:
+                errs.append(
+                    f"You dropped {d['source_part']} in m.{_ranges(hit)}, which you labeled {r['role']}. "
+                    f"Never drop the {r['role']}: split it between players at a phrase point, or keep it and "
+                    f"let the checker move a few single notes by an octave.")
+    return errs
+
+
 def _ranges(nums: list[int]) -> str:
     out, start, prev = [], None, None
     for n in nums:

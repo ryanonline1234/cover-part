@@ -8,7 +8,7 @@ import copy
 from . import execute as ex_mod
 from . import planner_greedy
 from .export import original_score, to_midi_b64, to_musicxml, with_title, written_part
-from .plan import validate
+from .plan import role_problems, validate
 from .roster import Roster
 from .score_io import Excerpt, summarize
 
@@ -63,28 +63,56 @@ def melody_coverage(plan: dict, ex: Excerpt, melody_map: list[dict]) -> float | 
     return round(len(need & have) / len(need), 3)
 
 
-def bass_coverage(plan: dict, ex: Excerpt, summary: dict) -> float:
-    need = set()
-    for seg in summary["segments"]:
-        for c in seg["parts"]:
-            if c.get("lowest_part_here"):
-                lo, hi = seg["measures"]
-                need |= {(c["part"], m) for m in range(lo, hi + 1)}
-    from .plan import sounding_measures
-    need = {(p, m) for p, m in need if m in sounding_measures(ex, p)}
-    have = {(a["source_part"], m) for a in plan["assignments"]
-            for m in range(a["start_measure"], a["end_measure"] + 1)}
-    return round(len(need & have) / len(need), 3) if need else 1.0
+def bass_preserved(orig, arranged) -> float:
+    """Share of sounding time in which the cover's lowest note has the same pitch class as the
+    original's lowest note. Octave-agnostic, independent of any planner's labels, and it also
+    catches texture inversions (a moved line ending up under the bass)."""
+    def lows(s):
+        out = []
+        for c in s.chordify().flatten().notes:
+            if c.pitches and c.duration.quarterLength > 0:
+                out.append((float(c.offset), float(c.duration.quarterLength),
+                            min(c.pitches, key=lambda p: p.ps).pitchClass))
+        return out
+
+    a = lows(orig)
+    b = sorted(lows(arranged))
+    total = kept = 0.0
+    j = 0
+    for o, d, pc in a:
+        total += d
+        while j + 1 < len(b) and b[j + 1][0] <= o + 1e-6:
+            j += 1
+        if b and b[j][0] <= o + 1e-6 < b[j][0] + b[j][1] and b[j][2] == pc:
+            kept += d
+    return round(kept / total, 3) if total else 1.0
+
+
+def handoffs(plan: dict) -> int:
+    """How many times a source line changes hands between players (continuity; lower is calmer)."""
+    n = 0
+    by_part: dict[str, list[dict]] = {}
+    for a in plan["assignments"]:
+        by_part.setdefault(a["source_part"], []).append(a)
+    for spans in by_part.values():
+        spans.sort(key=lambda a: a["start_measure"])
+        for prev, cur in zip(spans, spans[1:]):
+            if cur["player"] != prev["player"] and cur["start_measure"] > prev["end_measure"]:
+                n += 1
+    return n
 
 
 def arrange(ex: Excerpt, roster: Roster, planner: str = "greedy", piece: dict | None = None,
             seg_len: int = 4, ai_backend: str | None = None, model: str | None = None,
-            log=print) -> dict:
+            log=print, fixed_plan: dict | None = None) -> dict:
     piece = piece or {}
     summary = summarize(ex, seg_len)
     revisions = 0
     used_model = None
-    if planner == "greedy":
+    if planner == "fixed":
+        plan = copy.deepcopy(fixed_plan)
+        used_model = model
+    elif planner == "greedy":
         plan = planner_greedy.plan(ex, summary, roster, seg_len)
     elif planner == "ai":
         from . import planner_ai
@@ -92,11 +120,11 @@ def arrange(ex: Excerpt, roster: Roster, planner: str = "greedy", piece: dict | 
         plan = session.first_plan()
         used_model = session.model_name
         for _ in range(2):
-            problems = validate(plan, ex, roster)
-            if problems.ok:
+            errors = validate(plan, ex, roster).errors + role_problems(plan, ex)
+            if not errors:
                 break
-            log(f"  plan has {len(problems.errors)} structural problem(s); asking the planner to revise")
-            plan = session.revise(plan, problems.errors, kind="structure")
+            log(f"  plan has {len(errors)} structural/role problem(s); asking the planner to revise")
+            plan = session.revise(plan, errors, kind="structure")
             revisions += 1
     else:
         raise ValueError(planner)
@@ -116,6 +144,14 @@ def arrange(ex: Excerpt, roster: Roster, planner: str = "greedy", piece: dict | 
         if validate(revised, ex, roster).ok:
             plan = revised
             exe = ex_mod.execute(plan, ex, roster)
+    voicing_before = ex_mod.voicing_issues(plan, exe, ex, roster)
+    if planner == "ai" and any(v["kind"] == "bass_missing" or v["max_semitones"] >= 3 for v in voicing_before):
+        log(f"  {len(voicing_before)} voicing problem(s); asking the planner to revise")
+        revised = session.revise(plan, voicing_before, kind="voicing")
+        revisions += 1
+        if validate(revised, ex, roster).ok:
+            plan = revised
+            exe = ex_mod.execute(plan, ex, roster)
     after_ai = len(exe.violations)
     if exe.violations:
         plan, changed = ex_mod.best_octave_repair(plan, ex, roster)
@@ -124,6 +160,7 @@ def arrange(ex: Excerpt, roster: Roster, planner: str = "greedy", piece: dict | 
     after_octave = len(exe.violations)
     if exe.violations:
         ex_mod.fold_out_of_range(exe, roster)
+    voicing_final = ex_mod.voicing_issues(plan, exe, ex, roster)
     sc = ex_mod.assemble(ex, exe, roster)
 
     title = piece.get("title", "Excerpt")
@@ -141,9 +178,13 @@ def arrange(ex: Excerpt, roster: Roster, planner: str = "greedy", piece: dict | 
         "repair_rounds": revisions,
         "essential_coverage": {
             "melody": melody_coverage(plan, ex, piece.get("melody_map", [])),
-            "bass": bass_coverage(plan, ex, summary),
+            "bass": bass_preserved(orig, sc),
         },
         "lines_dropped": len(plan.get("dropped", [])),
+        "bass_inversions": sum(v["events"] for v in voicing_final if v["kind"] == "below_bass"),
+        "bass_inversions_before_revision": sum(v["events"] for v in voicing_before if v["kind"] == "below_bass"),
+        "voicing_issues": voicing_final,
+        "handoffs": handoffs(plan),
         "violations": [v.to_json(roster) for v in exe.violations],
     }
     return {

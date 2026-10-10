@@ -42,8 +42,13 @@ line are accompaniment.
 
 Priorities, in order:
 1. The melody must always sound, wherever it moves (violin, viola, cello…). Give it to a player whose \
-timbre can carry it, and keep it audible above or clearly apart from the accompaniment.
-2. The bass line must always sound.
+timbre can carry it, and keep it audible above or clearly apart from the accompaniment. Never drop a \
+span you label melody. If it is wider than any one player's range, split it between two players at a \
+phrase point, or keep it anyway: the checker will move the few notes that don't fit by an octave, and a \
+few moved notes are far better than a missing tune.
+2. The bass line must always sound, and stay at the bottom. Never drop a span you label bass. When you \
+move any other line down an octave, make sure it does not sink below the bass in the same bars \
+(the checker reports every note that sounds under the bass line).
 3. Then countermelodies, then inner harmony. Drop doublings and filler first when you run out of players.
 4. Continuity: a player keeps one line for long stretches. Hand a line to another player only at a \
 phrase boundary and only for a musical or range reason. Don't hop lines every few bars.
@@ -118,8 +123,15 @@ class Session:
         return self._call(f"Plan the cover.\n\n{self.data}")
 
     def revise(self, plan: dict, problems: list, kind: str) -> dict:
-        what = ("These structural problems were found in your plan" if kind == "structure"
-                else "These notes are outside the player's sounding range after your octave shifts")
+        what = {
+            "structure": "These structural problems were found in your plan",
+            "range": "These notes are outside the player's sounding range after your octave shifts",
+            "voicing": ("These voicing problems were found after executing your plan: `below_bass` means "
+                        "that player sounds under the player carrying the original bass line in those bars "
+                        "(events = how many notes, max_semitones = how far under); `bass_missing` means "
+                        "nobody plays the original bass line there. Fix them with octave shifts or by "
+                        "reassigning, without breaking the range rules"),
+        }[kind]
         msg = (f"{self.data}\n\nYour previous plan:\n{json.dumps(plan, indent=1)}\n\n{what}:\n"
                f"{json.dumps(problems, indent=1)}\n\nReturn a complete corrected plan. Change only what you "
                f"need to; keep the musical idea.")

@@ -63,10 +63,14 @@ One file per (piece, roster, planner) at `web/public/demos/<result_id>.json`, pl
     "notes_total": 412,
     "notes_out_of_range": 0,             // after repair; the headline number
     "notes_out_of_range_before_repair": 7,
+    "notes_out_of_range_after_ai_revision": 2,
+    "notes_out_of_range_after_octave_repair": 0,
     "notes_folded": 0,                   // single notes octave-displaced as a last resort
     "chords_reduced": 3,
-    "repair_rounds": 1,
-    "essential_coverage": { "melody": 1.0, "bass": 1.0 },
+    "repair_rounds": 1,                  // planner revision calls
+    "lines_dropped": 1,
+    "handoffs": 2,                       // times a source line changes player (continuity)
+    "essential_coverage": { "melody": 1.0, "bass": 1.0 },  // melody vs the manifest's reference melody map (null if none)
     "violations": [ { "player": "cl", "measure": 5, "pitch": "C7", "range_sounding": ["D3", "Bb5"] } ]
   },
   "coverage": [

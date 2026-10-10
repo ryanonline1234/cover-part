@@ -246,6 +246,63 @@ def best_octave_repair(plan: dict, ex: Excerpt, roster: Roster) -> tuple[dict, i
     return plan, changed
 
 
+def _measure_notes(part: stream.Part, number: int) -> list[tuple[float, float, float]]:
+    for m in part.getElementsByClass(stream.Measure):
+        if m.number == number:
+            out = []
+            for n in m.notes:
+                s = float(n.getOffsetBySite(m))
+                e = s + float(n.duration.quarterLength)
+                if e > s:
+                    out.append((s, e, min(p.ps for p in n.pitches)))
+            return out
+    return []
+
+
+def voicing_issues(plan: dict, exe: Execution, ex: Excerpt, roster: Roster) -> list[dict]:
+    """Texture inversions: moments where some player sounds BELOW the player carrying the original
+    bass line (the source line with the lowest note in that bar), or the bass line is missing."""
+    by_player: dict[str, dict] = {}
+    for num in ex.measure_numbers:
+        lows = {}
+        for sp in ex.parts:
+            notes = _measure_notes(sp.part, num)
+            if notes:
+                lows[sp.id] = min(ps for _, _, ps in notes)
+        if not lows:
+            continue
+        bass_src = min(lows, key=lows.get)
+        carriers = [a["player"] for a in plan["assignments"]
+                    if a["source_part"] == bass_src and a["start_measure"] <= num <= a["end_measure"]]
+        if not carriers:
+            k = ("(none)", bass_src)
+            d = by_player.setdefault(k, {"player": None, "bass_line": bass_src, "kind": "bass_missing",
+                                         "measures": [], "events": 0, "max_semitones": 0})
+            d["measures"].append(num)
+            continue
+        bass_notes = [x for c in carriers for x in _measure_notes(exe.parts[c], num)]
+        for p in roster.players:
+            if p.id in carriers:
+                continue
+            for s, e, ps in _measure_notes(exe.parts[p.id], num):
+                under = [b_ps - ps for bs, be, b_ps in bass_notes if bs < e and s < be and b_ps > ps]
+                if under:
+                    k = (p.id, bass_src)
+                    d = by_player.setdefault(k, {"player": p.id, "bass_line": f"{bass_src} on {'/'.join(carriers)}",
+                                                 "kind": "below_bass", "measures": [], "events": 0,
+                                                 "max_semitones": 0})
+                    if num not in d["measures"]:
+                        d["measures"].append(num)
+                    d["events"] += 1
+                    d["max_semitones"] = max(d["max_semitones"], max(under))
+    from .plan import _ranges
+    out = []
+    for d in by_player.values():
+        d["measures"] = _ranges(sorted(d["measures"]))
+        out.append(d)
+    return out
+
+
 def assemble(ex: Excerpt, exe: Execution, roster: Roster) -> stream.Score:
     sc = stream.Score()
     mm = tempo.MetronomeMark(number=ex.qpm)

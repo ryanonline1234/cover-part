@@ -9,7 +9,7 @@ import copy
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from music21 import chord, converter, note, stream, tempo
+from music21 import bar, chord, converter, note, stream, tempo
 
 PART_COLORS = ["#B3261E", "#1F5FA8", "#2E7D4F", "#B26A00", "#6B3FA0", "#00838F"]
 
@@ -82,11 +82,21 @@ def load_excerpt(path: str | Path, start: int, end: int, meta: dict | None = Non
     mov_idx = meta.get("movement_index", 0)
     ex = stream.Score()
     qpm = None
+    idx_range = meta.get("measure_index_range")
     for src in full.parts:
         mov = _movement_measures(src, mov_idx)
-        sel = [m for m in mov if m.number is not None and start <= m.number <= end]
+        if idx_range:
+            # Split bars (a half-bar pickup that repeats a bar number) make number-based selection
+            # ambiguous; the manifest pins the exact 0-based measure indices (inclusive).
+            all_m = list(src.getElementsByClass(stream.Measure))
+            sel = all_m[idx_range[0]:idx_range[1] + 1]
+        else:
+            sel = [m for m in mov if m.number is not None and start <= m.number <= end]
         if not sel:
             raise ValueError(f"no measures {start}-{end} in movement {mov_idx} of {path}")
+        nums = [m.number for m in sel]
+        if len(set(nums)) != len(nums):
+            raise ValueError(f"duplicate measure numbers inside excerpt {meta.get('id')}: {nums}")
         if qpm is None:
             for m in mov:
                 if m.number is not None and m.number > end:
@@ -103,6 +113,13 @@ def load_excerpt(path: str | Path, start: int, end: int, meta: dict | None = Non
         first = sel[0]
         for i, m in enumerate(sel):
             mc = copy.deepcopy(m)
+            # An excerpt can cut a repeat in half, which breaks MIDI export (music21 expands
+            # repeats). Excerpts play straight through, so repeats become plain barlines.
+            for side in ("leftBarline", "rightBarline"):
+                if isinstance(getattr(mc, side), bar.Repeat):
+                    setattr(mc, side, bar.Barline("regular"))
+            for rx in list(mc.recurse().getElementsByClass("RepeatExpression")):
+                rx.activeSite.remove(rx)
             if i == 0:
                 for cls in ("Clef", "KeySignature", "TimeSignature"):
                     if not mc.getElementsByClass(cls):
@@ -223,16 +240,10 @@ def summarize(ex: Excerpt, seg_len: int = 4) -> dict:
     first = ex.score.parts[0]
     ts = first.recurse().getElementsByClass("TimeSignature")
     ks = first.recurse().getElementsByClass("KeySignature")
-    key_name = None
-    try:
-        key_name = ex.score.analyze("key").name
-    except Exception:  # noqa: BLE001 - key analysis is a hint only
-        pass
     return {
         "measures": [ex.start_measure, ex.end_measure],
         "time_signature": ts[0].ratioString if ts else None,
         "key_signature_sharps": ks[0].sharps if ks else None,
-        "estimated_key": key_name,
         "tempo_qpm": ex.qpm,
         "source_parts": [{"id": sp.id, "name": sp.name} for sp in ex.parts],
         "segments": cells,
