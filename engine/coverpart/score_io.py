@@ -11,20 +11,30 @@ from pathlib import Path
 
 from music21 import bar, chord, converter, note, stream, tempo
 
-PART_COLORS = ["#B3261E", "#1F5FA8", "#2E7D4F", "#B26A00", "#6B3FA0", "#00838F"]
+PART_COLORS = ["#B3261E", "#1F5FA8", "#2E7D4F", "#B26A00", "#6B3FA0", "#00838F", "#AD1457", "#5D4037"]
 
+# First match wins, so the more specific names come first ("bass clarinet" before "clarinet").
 _NAME_TO_KEY = [
     ("violoncello", "cello"), ("cello", "cello"), ("viola", "viola"), ("violin", "violin"),
-    ("contrabass", "double_bass"), ("double bass", "double_bass"),
+    ("contrabass", "double_bass"), ("double bass", "double_bass"), ("string bass", "double_bass"),
+    ("bass clarinet", "bass_clarinet"), ("clarinet", "clarinet"), ("piccolo", "piccolo"), ("flute", "flute"),
+    ("oboe", "oboe"), ("bassoon", "bassoon"),
+    ("alto sax", "alto_sax"), ("tenor sax", "tenor_sax"), ("baritone sax", "bari_sax"), ("bari sax", "bari_sax"),
+    ("trumpet", "trumpet"), ("cornet", "trumpet"), ("flugelhorn", "trumpet"), ("english horn", "other"),
+    ("horn", "horn"), ("trombone", "trombone"), ("euphonium", "euphonium"), ("baritone horn", "euphonium"),
+    ("tuba", "tuba"),
 ]
 
 
 def guess_instrument_key(name: str) -> str:
-    n = (name or "").lower()
+    """The instrument a source line was written for, from its part name; "other" when it isn't one
+    of the roster instruments (piano, voices, ...). Used as a tie-break, never for ranges."""
+    from . import instruments as ins
+    n = (name or "").lower().replace("saxophone", "sax")
     for needle, key in _NAME_TO_KEY:
         if needle in n:
-            return key
-    return "violin"
+            return key if key in ins.INSTRUMENTS else "other"
+    return "other"
 
 
 @dataclass
@@ -79,6 +89,16 @@ def load_excerpt(path: str | Path, start: int, end: int, meta: dict | None = Non
     full = converter.parse(str(path))
     if isinstance(full, stream.Opus):
         full = full.scores[meta.get("movement_index", 0)]
+    return excerpt_from_score(full, start, end, meta, default_qpm, source=str(path))
+
+
+def excerpt_from_score(full: stream.Score, start: int, end: int, meta: dict | None = None,
+                       default_qpm: float = 96.0, source: str = "score") -> Excerpt:
+    """Cut bars start..end of one movement out of a parsed score: repeats become plain barlines, and
+    the clef, key and time in force are carried into the first bar. meta["measure_index_range"]
+    pins exact 0-based measure indices when bar numbers repeat (split bars)."""
+    meta = meta or {}
+    path = source
     mov_idx = meta.get("movement_index", 0)
     ex = stream.Score()
     qpm = None

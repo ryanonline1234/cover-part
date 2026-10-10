@@ -70,16 +70,19 @@ export const SECTIONS: Section[] = [
     text: "",
   },
   {
-    // tokens: fp_total, fp_oor, fp_under, fp_missing, rev_count, rev_kept, rev_rejected, final_total, final_folded,
-    //         g_total, ai_id, g_id, fu_cmp, fu_ai_better, fu_g_better, fu_tie, fu_ai, fu_g, fold_ai, fold_g, bass_w
+    // tokens: pair_piece, pair_band, n_cand, cand_totals, chosen_n, fp_total, fp_oor, fp_under, fp_missing, rev_count,
+    //         rev_kept, rev_rejected, final_total, g_total, ai_id, g_id, fu_cmp, fu_ai_better, fu_g_better, fu_tie, fu_ai, fu_g,
+    //         fold_ai, fold_g, bass_w
     id: "ask-an-ai",
     heading: "Why not just ask an AI?",
     facts: [
-      "Haydn's “Emperor” theme for church brass: the AI's first draft still had {{fp_total}} problems after the octave repair: {{fp_oor}} notes out of range, {{fp_under}} notes under the bass, {{fp_missing}} bars with no bass. [source: demos/{{ai_id}}.json → checks.first_plan]",
+      "For each sample pair the AI writes {{n_cand}} plans on its own. Each goes through the same revision loop and repairs, and the checker keeps the one with the fewest problems; a tie goes to fewer line-bars left out, then fewer hand-offs. The choice never looks at the reference melody map. [source: demos/{{ai_id}}.json → checks.candidates, selection_rule; engine/coverpart/arrange.py → AI_CANDIDATES, candidate_key]",
+      "{{pair_piece}}, band “{{pair_band}}”: after each plan's own loop, the problem counts were {{cand_totals}}. The checker kept plan {{chosen_n}}. [source: demos/{{ai_id}}.json → checks.candidates[].total_final, chosen]",
+      "That plan's first draft still had {{fp_total}} problems after the octave repair: {{fp_oor}} notes out of range, {{fp_under}} notes under the bass, {{fp_missing}} bars with no bass. [source: demos/{{ai_id}}.json → checks.first_plan (the kept plan's)]",
       "Problems = notes still out of range + notes under the bass + {{bass_w}} × bars with no bass. [source: engine/coverpart/arrange.py → total_problems, BASS_MISSING_WEIGHT]",
-      "Revisions the checker asked for: {{rev_count}}. Kept: {{rev_kept}}; rejected: {{rev_rejected}}. A revision is kept only if the total goes down. [source: demos/{{ai_id}}.json → checks.revisions]",
+      "Revisions the checker asked for on that plan: {{rev_count}}. Kept: {{rev_kept}}; rejected: {{rev_rejected}}. A revision is kept only if the total goes down. [source: demos/{{ai_id}}.json → checks.revisions (the kept plan's)]",
       "Final AI plan: {{final_total}} problems. Rule-based plan for the same band: {{g_total}}. [source: demos/{{ai_id}}.json, demos/{{g_id}}.json → checks.final]",
-      "Over all pairs, the AI's first drafts needed fewer single-note folds than the rule-based plan in {{fu_ai_better}} pairs and more in {{fu_g_better}} ({{fu_tie}} tied): {{fu_cmp}}. Averages {{fu_ai}} vs {{fu_g}}; after the revision loop, {{fold_ai}} vs {{fold_g}}. [source: demos/comparison.json → totals.first_unfit, totals.folded]",
+      "The scoreboard's first-draft numbers use the first plan the AI wrote, before the checker chooses, so picking the best of {{n_cand}} doesn't flatter them. Over all pairs, those drafts needed fewer single-note folds than the rule-based plan in {{fu_ai_better}} pairs and more in {{fu_g_better}} ({{fu_tie}} tied): {{fu_cmp}}. Averages {{fu_ai}} vs {{fu_g}}; in the final parts, {{fold_ai}} vs {{fold_g}}. [source: demos/comparison.json → totals.first_unfit, totals.folded; demos/*__ai.json → checks.first_plan_unselected; engine/coverpart/report.py]",
     ],
     text: "",
   },
@@ -98,12 +101,12 @@ export const SECTIONS: Section[] = [
     text: "",
   },
   {
-    // tokens: n_pieces, n_bands, n_pairs, model
+    // tokens: n_pieces, n_bands, n_pairs, model, n_cand
     id: "evidence",
     heading: "The evidence",
     facts: [
       "{{n_pieces}} excerpts × {{n_bands}} bands = {{n_pairs}} pairs, each planned by the AI and by the rule-based baseline. Both go through the same checker and the same repairs. [source: demos/comparison.json → n_pairs]",
-      "The AI plans on this site were precomputed ({{model}}) for the {{n_bands}} sample bands only. A band you build yourself gets the rule-based plan, made and checked live, and is labeled that way. [source: demos/*__ai.json → model; DECISIONS.md, 2026-10-10 (redesign)]",
+      "The AI plans on this site were precomputed ({{model}}) for the {{n_bands}} sample bands only. For each pair the AI wrote {{n_cand}} plans and the checker kept the one with the fewest problems; that kept plan is the AI side of every number below. A band you build yourself gets the rule-based plan, made and checked live, and is labeled that way. [source: demos/*__ai.json → model, checks.candidates; DECISIONS.md, 2026-10-10 (redesign; pre-recording upgrades)]",
       `${REFERENCE_MAP.fact} Melody identified and reference melody kept are both scored against it. [source: corpus/manifest.json → melody_map]`,
     ],
     text: "",
@@ -113,7 +116,7 @@ export const SECTIONS: Section[] = [
     id: "close",
     heading: "Try it with your band",
     facts: [
-      "A band you build yourself gets the rule-based plan, made and checked live. The AI plans on this page were precomputed for the {{n_bands}} sample bands only. [source: demos/index.json → rosters; DECISIONS.md, 2026-10-10 (redesign)]",
+      "A band you build yourself, or a score you upload as MusicXML (what MuseScore, Finale and Sibelius export), gets the rule-based plan, made and checked live; uploaded scores are not stored. The AI plans on this page were precomputed for the {{n_bands}} sample bands only. [source: demos/index.json → rosters; web/src/tool/UploadPanel.tsx; DECISIONS.md, 2026-10-10 (redesign; pre-recording upgrades)]",
     ],
     text: "",
   },

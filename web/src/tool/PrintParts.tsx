@@ -19,13 +19,15 @@ interface Props {
   only: string | null;
   /** Called with true once every part has been engraved at print size. */
   onReady: (ready: boolean) => void;
+  /** The music was the director's own uploaded file (not a library excerpt). */
+  uploaded?: boolean;
 }
 
 /**
  * The printed folder: one player's full part per page, engraved again at print size. Hidden on screen;
  * @media print shows it and hides everything else on the tool page.
  */
-export function PrintParts({ result, names, only, onReady }: Props) {
+export function PrintParts({ result, names, only, onReady, uploaded = false }: Props) {
   const [svgs, setSvgs] = useState<Record<string, string[]>>({});
   const players = result.roster.players;
 
@@ -62,9 +64,7 @@ export function PrintParts({ result, names, only, onReady }: Props) {
           <section key={p.id} className="print-sheet" hidden={only !== null && only !== p.id}>
             <header className="ps-head">
               <p className="ps-work">{work}</p>
-              <p className="ps-composer">
-                {piece.composer} · {mm(piece.measures[0], piece.measures[1])}
-              </p>
+              <p className="ps-composer">{[piece.composer, mm(piece.measures[0], piece.measures[1])].filter(Boolean).join(" · ")}</p>
               <h1 className="ps-player">{name}</h1>
               <p className="ps-inst">
                 {name !== inst ? `${inst} · ` : ""}
@@ -81,7 +81,10 @@ export function PrintParts({ result, names, only, onReady }: Props) {
               ))}
               {!svgs[p.id] && <p className="ps-wait">Engraving this part for print…</p>}
             </div>
-            <footer className="ps-foot">Arranged with Cover Part · source: {piece.source ?? "OpenScore String Quartets (CC0)"}</footer>
+            <footer className="ps-foot">
+              Arranged with Cover Part ·{" "}
+              {uploaded ? "from your own score (rule-based plan, made live; not stored)" : `source: ${piece.source ?? "OpenScore String Quartets (CC0)"}`}
+            </footer>
           </section>
         );
       })}

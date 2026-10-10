@@ -1,3 +1,4 @@
+import { bestOf, bestOfSentence } from "./bestof";
 import { PLANNER_LABEL, mm, pct, playerById, prettyPitch, prettyRange, sourceById } from "./music";
 import type { ArrangeResult, Badness } from "./types";
 
@@ -70,10 +71,20 @@ function loopSteps(r: ArrangeResult): Step[] {
   const ai = r.planner === "ai";
   const revs = c.revisions ?? [];
   const steps: Step[] = [];
+  const best = ai ? bestOf(r) : null;
 
+  if (best) {
+    steps.push({
+      name: best.n >= 2 ? `${best.n} AI plans` : "AI plans",
+      text: `${bestOfSentence(best)} Each plan went through the same revision loop and automatic repairs before it was counted; the checker never looks at the reference melody maps. The steps below are the kept plan's.`,
+    });
+  }
   steps.push(
     ai
-      ? { name: "AI plan", text: `First draft${r.model ? ` from ${r.model}` : ""}: who covers each line, bar by bar.` }
+      ? {
+          name: best && best.n >= 2 ? "Kept plan, first draft" : "AI plan",
+          text: `First draft${r.model ? ` from ${r.model}` : ""}: who covers each line, bar by bar.`,
+        }
       : { name: "Baseline rule", text: "No AI: fixed rules call the highest line the melody and the lowest the bass, rank the rest by activity, and give each line to the free player whose range fits it best." },
   );
 
@@ -91,7 +102,7 @@ function loopSteps(r: ArrangeResult): Step[] {
   if (fp) {
     steps.push({
       name: "Checker",
-      text: `Every plan gets the same automatic repairs before it is scored. The ${ai ? "first plan" : "baseline"} then had ${describe(fp)}. Problem count ${problems(fp)}.`,
+      text: `Every plan gets the same automatic repairs before it is scored. The ${ai ? (best && best.n >= 2 ? "kept plan's first draft" : "first plan") : "baseline"} then had ${describe(fp)}. Problem count ${problems(fp)}.`,
     });
   } else {
     const before = c.notes_out_of_range_before_repair;
@@ -167,9 +178,20 @@ interface Row {
   def: string;
   value: (r: ArrangeResult) => string;
   show?: (r: ArrangeResult) => boolean;
+  /** Uses the unselected first draft on a best-of-n AI result (its definition says so then). */
+  unselected?: boolean;
 }
 
 const n = (x: number | null | undefined) => (x === undefined || x === null ? "n/a" : String(x));
+
+/**
+ * The first plan the comparison uses: for a best-of-n AI result, the first candidate's first draft, picked
+ * by order and never by quality, so a first-draft comparison with the baseline isn't flattered by the
+ * choosing. Otherwise the result's own first plan.
+ */
+const firstOf = (r: ArrangeResult): Badness | undefined => r.checks.first_plan_unselected ?? r.checks.first_plan;
+const UNSELECTED_NOTE =
+  "First-plan rows marked * use the AI's first draft from its first try, taken before the checker chose among its plans, so the comparison with the rule-based plan isn't flattered by the choosing.";
 
 const ROWS: Row[] = [
   {
@@ -180,13 +202,15 @@ const ROWS: Row[] = [
   {
     label: "First plan: out of range before any repair",
     def: "As the plan was written, before octave moves or folds.",
-    value: (r) => n(r.checks.first_plan?.out_of_range_raw ?? r.checks.notes_out_of_range_before_repair),
+    unselected: true,
+    value: (r) => n(firstOf(r)?.out_of_range_raw ?? r.checks.notes_out_of_range_before_repair),
   },
   {
     label: "First plan: notes that needed a single-note fold",
     def: "Still out of range after whole phrases were moved an octave.",
-    value: (r) => n(r.checks.first_plan?.out_of_range),
-    show: (r) => !!r.checks.first_plan,
+    unselected: true,
+    value: (r) => n(firstOf(r)?.out_of_range),
+    show: (r) => !!firstOf(r),
   },
   {
     label: "Single notes folded, final",
@@ -201,7 +225,8 @@ const ROWS: Row[] = [
   {
     label: "Notes under the bass, first plan",
     def: "The same measure on the first plan, after its automatic repairs.",
-    value: (r) => n(r.checks.first_plan?.under_bass ?? r.checks.bass_inversions_before_revision),
+    unselected: true,
+    value: (r) => n(firstOf(r)?.under_bass ?? r.checks.bass_inversions_before_revision),
   },
   {
     label: "Bars with no bass, final",
@@ -211,8 +236,12 @@ const ROWS: Row[] = [
   },
   {
     label: "Problem count, first plan to final",
-    def: "Single-note folds + notes under the bass + 12 per bar with no bass. An AI revision is kept only if this goes down.",
-    value: (r) => (r.checks.first_plan && r.checks.final ? `${problems(r.checks.first_plan)} \u2192 ${problems(r.checks.final)}` : "n/a"),
+    def: "Single-note folds + notes under the bass + 12 per bar with no bass. An AI revision is kept only if this goes down, and the checker keeps the AI plan where it is lowest.",
+    unselected: true,
+    value: (r) => {
+      const f = firstOf(r);
+      return f && r.checks.final ? `${problems(f)} \u2192 ${problems(r.checks.final)}` : "n/a";
+    },
     show: (r) => !!r.checks.final,
   },
   {
@@ -224,6 +253,17 @@ const ROWS: Row[] = [
     label: "Reference melody kept",
     def: "Share of the reference melody bars (mapped from the notes by an AI agent before any plan existed) that some player actually plays.",
     value: (r) => (r.checks.essential_coverage.melody === null ? "no map" : pct(r.checks.essential_coverage.melody)),
+  },
+  {
+    label: "AI plans compared",
+    def: "Independent AI plans, each through the same revision loop and repairs; the checker keeps the one with the fewest problems.",
+    value: (r) => {
+      if (r.planner !== "ai") return "none";
+      const b = bestOf(r);
+      if (!b) return "1";
+      return b.n >= 2 ? `${b.n}: kept ${b.chosen.total_final} problems (others ${b.others.map((c) => c.total_final).join(", ")})` : "1";
+    },
+    show: (r) => !!bestOf(r),
   },
   {
     label: "AI revisions kept",
@@ -331,6 +371,7 @@ export function Checks({ result, other }: Props) {
   const cols = !other ? [result] : result.planner === "ai" ? [result, other] : [other, result];
   const steps = loopSteps(result);
   const rows = ROWS.filter((row) => !row.show || cols.some((r) => row.show!(r)));
+  const unselected = cols.some((r) => r.planner === "ai" && !!r.checks.first_plan_unselected);
 
   return (
     <div className={`checks ${clean ? "checks--clean" : "checks--fail"}`}>
@@ -390,7 +431,10 @@ export function Checks({ result, other }: Props) {
             {rows.map((row) => (
               <tr key={row.label}>
                 <th scope="row">
-                  <span className="ledger-label">{row.label}</span>
+                  <span className="ledger-label">
+                    {row.label}
+                    {row.unselected && unselected ? " *" : ""}
+                  </span>
                   <span className="ledger-def">{row.def}</span>
                 </th>
                 {cols.map((r) => (
@@ -402,6 +446,7 @@ export function Checks({ result, other }: Props) {
             ))}
           </tbody>
         </table>
+        {unselected && <p className="ledger-note">{UNSELECTED_NOTE}</p>}
         {!other && <p className="ledger-note">No precomputed {result.planner === "ai" ? "baseline" : "AI plan"} for these players to compare against.</p>}
       </div>
     </div>

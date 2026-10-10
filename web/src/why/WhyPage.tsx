@@ -97,7 +97,7 @@ export default function WhyPage({ bare = false, toolHref = "#/" }: { bare?: bool
         <Situation index={index} band={band} setBand={setBand} />
         <AsWritten index={index} band={band} setBand={setBand} />
         <SimpleRule index={index} />
-        <AskAI />
+        <AskAI index={index} />
         <StillWrong index={index} />
         <Evidence index={index} />
 

@@ -7,6 +7,8 @@ interface Props {
   index: DemoIndex;
   current: { piece: string; roster: string } | null;
   onPick: (piece: string, roster: string) => void;
+  /** Plans the AI wrote per pair (best-of-N; the checker kept one). Read from the result files; omit when unknown. */
+  nCandidates?: number | null;
 }
 
 /**
@@ -38,7 +40,7 @@ export const METRIC_TEXT: Record<string, { short: string; name: string; def: str
   first_unfit: {
     short: "Folds, 1st plan",
     name: "First-plan notes that needed a single-note fold",
-    def: "The planner's first plan, after the same octave repair every plan gets: notes still out of range.",
+    def: "The planner's first plan (for the AI, the first plan it wrote, before the checker picks among its plans), after the same octave repair every plan gets: notes still out of range.",
   },
   folded: {
     short: "Folds, final",
@@ -141,7 +143,7 @@ function useOverflow(ref: RefObject<HTMLDivElement | null>): { over: boolean; at
   return s;
 }
 
-export function Scoreboard({ data, index, current, onPick }: Props) {
+export function Scoreboard({ data, index, current, onPick, nCandidates = null }: Props) {
   const metrics = data.metrics.filter((m) => data.totals[m.key]);
   const share = Object.fromEntries(metrics.map((m) => [m.key, isShare(data, m.key)]));
   const ahead = { ai: [] as string[], base: [] as string[], even: [] as string[] };
@@ -159,6 +161,9 @@ export function Scoreboard({ data, index, current, onPick }: Props) {
       <p className="block-lede">
         Every piece with every set of players, {data.n_pairs} pairs in all, AI plan against the rule-based baseline. Counts are
         how many pairs each side did better on; a tie means equal numbers.
+        {nCandidates !== null &&
+          nCandidates > 1 &&
+          ` The AI side is, for each pair, the plan the checker kept of the ${nCandidates} the AI wrote (fewest problems); the first-plan column instead uses the first plan it wrote, before that choice.`}
         {ahead.ai.length > 0 && ` The AI plan does better more often on ${listing(ahead.ai)}.`}
         {ahead.base.length > 0 && ` The baseline does better more often on ${listing(ahead.base)}.`}
         {ahead.even.length > 0 &&

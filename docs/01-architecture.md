@@ -103,3 +103,9 @@ Format 1. Track 0 = tempo only; tracks 1..N = players in roster order (same orde
 ## Web routes
 
 `#/?piece=<id>&band=<preset id | custom list like flute:i,trumpet:b:Sam>&planner=ai|greedy` (tool) and `#/why` (why page). Custom bands always use `planner=greedy`.
+
+## Uploads and best-of-3 (2026-10-10, pre-recording)
+
+- `POST /api/inspect` with `{filename, data_base64}` (or `{upload:{…}}`) returns `{title, composer, movements:[{index, first_bar, last_bar, bars, label}], parts:[names], limits:{max_bars}, notes:[]}`. The file is read with ElementTree; music21 parses only the chosen bars.
+- `POST /api/arrange` with `upload:{filename, data_base64, movement_index, start_measure, end_measure}` in place of `piece_id`. Planners: greedy and as_written (ai returns 403). Limits: 3 MB, 32 bars, ≤ 8 parts with notes. Results: `result_id` = `upload__<band>__greedy__live`, and `piece` gains `uploaded`, `filename`, `notes`, source "Uploaded by you; not stored". The tool's link carries only the band for uploads.
+- AI results carry `checks.candidates` = `[{index, chosen, total_first, total_final, final{…}, revisions_kept, revisions_rejected, planner_calls}]`, plus `checks.candidates_failed`, `checks.selection_rule` and `checks.first_plan_unselected(_index)`. `first_plan`, `revisions` and `final` describe the chosen candidate. report.py's `first_unfit` uses `first_plan_unselected`. comparison.json adds `selection` and per-row `candidates` / `chosen_index`.

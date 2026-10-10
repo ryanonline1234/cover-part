@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import type { DemoIndex } from "../types";
+import { pickShort } from "./candidates";
 import { section } from "./copy";
 import { useABPlayer, useComparison, useNear, useResult } from "./hooks";
 import { MELODY_MAPS } from "./melodyMaps";
@@ -75,7 +76,7 @@ export function SimpleRule({ index }: { index: DemoIndex | null }) {
             measures={ai.data.piece.measures}
             rows={[
               { key: "greedy", label: "Rule-based plan", result: g.data },
-              { key: "ai", label: "AI plan", result: ai.data },
+              { key: "ai", label: "AI plan", result: ai.data, note: pickShort(ai.data) },
             ]}
             player={player}
           />

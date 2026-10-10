@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import { bestOf } from "./bestof";
 import { downloadText, mm, octaveNote, prettyRange, slug, sourceById } from "./music";
 import type { ArrangeResult } from "./types";
 
@@ -6,6 +7,7 @@ import type { ArrangeResult } from "./types";
 export function Plan({ result, downloads = true }: { result: ArrangeResult; downloads?: boolean }) {
   const sources = sourceById(result);
   const { plan } = result;
+  const best = bestOf(result);
 
   return (
     <div className="plan">
@@ -13,7 +15,9 @@ export function Plan({ result, downloads = true }: { result: ArrangeResult; down
         <p className="plan-summary-text">{plan.summary}</p>
         <p className="plan-by">
           {result.planner === "ai"
-            ? `Planned by ${result.model ?? "an AI model"}. Transposition, range checks and repair are plain code.`
+            ? `Planned by ${result.model ?? "an AI model"}${
+                best && best.n >= 2 ? `, the best of ${best.n} independent plans: the checker kept the one with the fewest problems` : ""
+              }. Transposition, range checks and repair are plain code.`
             : "No AI here: fixed rules call the highest line the melody and the lowest the bass, rank the rest by activity, and give each line to the free player whose range fits it best (with octave shifts)."}
         </p>
       </div>

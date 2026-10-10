@@ -196,46 +196,33 @@ def excerpt_heading(piece: dict, ex: Excerpt) -> str:
     return f"{mv}, {bars}" if mv else bars
 
 
-def arrange(ex: Excerpt, roster: Roster, planner: str = "greedy", piece: dict | None = None,
-            seg_len: int = 4, ai_backend: str | None = None, model: str | None = None,
-            log=print, fixed_plan: dict | None = None) -> dict:
-    piece = piece or {}
-    summary = summarize(ex, seg_len)
-    revisions = 0
-    used_model = None
-    revision_log: list[dict] = []
-    session = None
-    if planner == "fixed":
-        plan = copy.deepcopy(fixed_plan)
-        used_model = model
-    elif planner == "greedy":
-        plan = planner_greedy.plan(ex, summary, roster, seg_len)
-    elif planner == "as_written":
-        plan = planner_as_written.plan(ex, roster)
-    elif planner == "ai":
-        from . import planner_ai
-        session = planner_ai.Session(summary, roster, ex, backend=ai_backend, model=model, log=log)
-        plan = session.first_plan()
-        used_model = session.model_name
-        for _ in range(2):
-            try:
-                errors = validate(plan, ex, roster).errors + role_problems(plan, ex)
-            except Exception as e:  # noqa: BLE001 - a malformed plan is a problem to report, not a crash
-                errors = [f"plan could not be checked: {type(e).__name__}: {e}"]
-            if not errors:
-                break
-            log(f"  plan has {len(errors)} structural/role problem(s); asking the planner to revise")
-            try:
-                plan = session.revise(plan, errors, kind="structure")
-                revisions += 1
-            except Exception as e:  # noqa: BLE001
-                revision_log.append({"kind": "structure", "kept": False, "before": None, "after": None,
-                                     "why": f"planner call failed: {type(e).__name__}"})
-                log(f"  structure revision failed: {e}")
-                break
-    else:
-        raise ValueError(planner)
+AI_CANDIDATES = 3  # independent AI plans per arrangement; the checker keeps one (DECISIONS.md, best-of-3)
+SELECTION_RULE = ["total_problems", "measures_dropped", "handoffs"]
 
+
+def _finish(p: dict, ex: Excerpt, roster: Roster, seg_len: int, repair: bool):
+    """Every candidate plan gets the same deterministic repairs before it is scored: whole-
+    phrase octave repair, then single-note folds as a last resort."""
+    e = ex_mod.execute(p, ex, roster)
+    if not repair:  # count the notes as they will be engraved, since each gets its own x
+        ex_mod.split_like_engraving(e, roster)
+    raw = len(e.violations)
+    if e.violations and repair:
+        p2, changed = ex_mod.best_octave_repair(p, ex, roster, seg_len)
+        if changed:
+            p, e = p2, ex_mod.execute(p2, ex, roster)
+    unfit = [v.to_json(roster) for v in e.violations]
+    if e.violations and repair:
+        ex_mod.fold_out_of_range(e, roster)
+    v, missing_bars = ex_mod.voicing_report(p, e, ex, roster)
+    bad = {"out_of_range_raw": raw, "out_of_range": len(unfit), "folded": e.notes_folded,
+           "under_bass": sum(x["events"] for x in v if x["kind"] == "below_bass"),
+           "bass_missing_bars": missing_bars}  # distinct bars, not issue entries (one entry per bass line)
+    return p, e, bad, v, unfit
+
+
+def _settle(plan: dict, ex: Excerpt, roster: Roster, seg_len: int, repair: bool, log) -> dict:
+    """Autofix whatever structure problems are left, then finish (repair + score) the plan."""
     try:
         problems_ok = validate(plan, ex, roster).ok
     except Exception:  # noqa: BLE001
@@ -244,68 +231,167 @@ def arrange(ex: Excerpt, roster: Roster, planner: str = "greedy", piece: dict | 
         log("  autofixing remaining structural problems")
         plan = _autofix(plan, ex, roster)
     role_left = role_problems(plan, ex)
-    repair = planner != "as_written"  # "as written" shows the unrepaired parts: no octave repair, no folds
+    plan, exe, bad, voicing, unfit = _finish(plan, ex, roster, seg_len, repair)
+    return {"plan": plan, "exe": exe, "bad": bad, "voicing": voicing, "unfit": unfit, "first": dict(bad),
+            "role_left": role_left, "revisions": 0, "revision_log": [], "calls": 0}
 
-    def finish(p: dict):
-        """Every candidate plan gets the same deterministic repairs before it is scored: whole-
-        phrase octave repair, then single-note folds as a last resort."""
-        e = ex_mod.execute(p, ex, roster)
-        if not repair:  # count the notes as they will be engraved, since each gets its own x
-            ex_mod.split_like_engraving(e, roster)
-        raw = len(e.violations)
-        if e.violations and repair:
-            p2, changed = ex_mod.best_octave_repair(p, ex, roster, seg_len)
-            if changed:
-                p, e = p2, ex_mod.execute(p2, ex, roster)
-        unfit = [v.to_json(roster) for v in e.violations]
-        if e.violations and repair:
-            ex_mod.fold_out_of_range(e, roster)
-        v, missing_bars = ex_mod.voicing_report(p, e, ex, roster)
-        bad = {"out_of_range_raw": raw, "out_of_range": len(unfit), "folded": e.notes_folded,
-               "under_bass": sum(x["events"] for x in v if x["kind"] == "below_bass"),
-               "bass_missing_bars": missing_bars}  # distinct bars, not issue entries (one entry per bass line)
-        return p, e, bad, v, unfit
 
-    plan, exe, bad, voicing, unfit = finish(plan)
-    first = dict(bad)
+def _ai_candidate(session, ex: Excerpt, roster: Roster, seg_len: int, lock, log) -> dict:
+    """One independent AI attempt: first plan, structure loop (<= 2 rounds), autofix, repairs, then
+    one range and one voicing revision, each kept only if the checker counts fewer problems.
+    Planner calls run unlocked (they are slow and independent); every music21 step holds `lock`,
+    because the candidates share one Excerpt and music21 streams are not thread-safe."""
+    revisions = 0
+    revision_log: list[dict] = []
+    plan = session.first_plan()  # a failure here excludes the candidate (the caller logs it)
+    for _ in range(2):
+        with lock:
+            try:
+                errors = validate(plan, ex, roster).errors + role_problems(plan, ex)
+            except Exception as e:  # noqa: BLE001 - a malformed plan is a problem to report, not a crash
+                errors = [f"plan could not be checked: {type(e).__name__}: {e}"]
+        if not errors:
+            break
+        log(f"  plan has {len(errors)} structural/role problem(s); asking the planner to revise")
+        try:
+            plan = session.revise(plan, errors, kind="structure")
+            revisions += 1
+        except Exception as e:  # noqa: BLE001
+            revision_log.append({"kind": "structure", "kept": False, "before": None, "after": None,
+                                 "why": f"planner call failed: {type(e).__name__}"})
+            log(f"  structure revision failed: {e}")
+            break
+    with lock:
+        st = _settle(plan, ex, roster, seg_len, True, log)
+    st["revisions"], st["revision_log"] = revisions, revision_log
 
     def try_revision(kind: str, problems: list) -> None:
         """The checker has the last word: a revision is kept only if it is structurally valid and,
         after the same deterministic repairs, leaves fewer problems in total."""
-        nonlocal plan, exe, bad, voicing, unfit, revisions
         try:
-            revised = session.revise(plan, problems, kind=kind)
+            revised = session.revise(st["plan"], problems, kind=kind)
         except Exception as e:  # noqa: BLE001 - keep the valid plan we already have
-            revision_log.append({"kind": kind, "kept": False, "before": dict(bad), "after": None,
-                                 "why": f"planner call failed: {type(e).__name__}"})
+            st["revision_log"].append({"kind": kind, "kept": False, "before": dict(st["bad"]), "after": None,
+                                       "why": f"planner call failed: {type(e).__name__}"})
             log(f"  {kind} revision failed: {e}")
             return
-        revisions += 1
-        try:
-            errs = validate(revised, ex, roster).errors + role_problems(revised, ex)
-        except Exception as e:  # noqa: BLE001
-            errs = [f"{type(e).__name__}: {e}"]
-        if errs:
-            revision_log.append({"kind": kind, "kept": False, "before": dict(bad), "after": None,
-                                 "why": f"{len(errs)} structural/role problem(s)"})
-            log(f"  {kind} revision rejected: {errs[:2]}")
-            return
-        p2, e2, b2, v2, u2 = finish(revised)
-        t_old, t_new = total_problems(bad), total_problems(b2)
+        st["revisions"] += 1
+        with lock:
+            try:
+                errs = validate(revised, ex, roster).errors + role_problems(revised, ex)
+            except Exception as e:  # noqa: BLE001
+                errs = [f"{type(e).__name__}: {e}"]
+            if errs:
+                st["revision_log"].append({"kind": kind, "kept": False, "before": dict(st["bad"]), "after": None,
+                                           "why": f"{len(errs)} structural/role problem(s)"})
+                log(f"  {kind} revision rejected: {errs[:2]}")
+                return
+            p2, e2, b2, v2, u2 = _finish(revised, ex, roster, seg_len, True)
+        t_old, t_new = total_problems(st["bad"]), total_problems(b2)
         kept = t_new < t_old
-        revision_log.append({"kind": kind, "kept": kept, "before": dict(bad), "after": b2,
-                             "total_before": t_old, "total_after": t_new,
-                             "why": f"problems {t_old} -> {t_new}" + ("" if kept else " (not fewer)")})
+        st["revision_log"].append({"kind": kind, "kept": kept, "before": dict(st["bad"]), "after": b2,
+                                   "total_before": t_old, "total_after": t_new,
+                                   "why": f"problems {t_old} -> {t_new}" + ("" if kept else " (not fewer)")})
         log(f"  {kind} revision {'kept' if kept else 'rejected'}: {t_old} -> {t_new}")
         if kept:
-            plan, exe, bad, voicing, unfit = p2, e2, b2, v2, u2
+            st.update(plan=p2, exe=e2, bad=b2, voicing=v2, unfit=u2)
 
-    if planner == "ai" and unfit:
-        log(f"  {len(unfit)} note(s) still out of range after octave repair; asking the planner to revise")
-        try_revision("range", unfit)
-    if planner == "ai" and any(v["kind"] == "bass_missing" or v["max_semitones"] >= 3 for v in voicing):
-        log(f"  {len(voicing)} voicing problem(s); asking the planner to revise")
-        try_revision("voicing", voicing)
+    if st["unfit"]:
+        log(f"  {len(st['unfit'])} note(s) still out of range after octave repair; asking the planner to revise")
+        try_revision("range", st["unfit"])
+    if any(v["kind"] == "bass_missing" or v["max_semitones"] >= 3 for v in st["voicing"]):
+        log(f"  {len(st['voicing'])} voicing problem(s); asking the planner to revise")
+        try_revision("voicing", st["voicing"])
+    st["calls"] = len(getattr(session, "calls", []))
+    return st
+
+
+def candidate_key(st: dict, ex: Excerpt) -> tuple:
+    """How the checker ranks finished candidates: fewest problems (the revision gate's formula),
+    then fewest line-bars left out, then fewest hand-offs, then the earlier candidate. It never
+    looks at the reference melody maps."""
+    return (total_problems(st["bad"]), measures_dropped(st["plan"], ex), handoffs(st["plan"]), st["index"])
+
+
+def _candidate_summary(st: dict, ex: Excerpt, chosen: bool) -> dict:
+    revs = st["revision_log"]
+    return {
+        "index": st["index"], "chosen": chosen,
+        "total_first": total_problems(st["first"]), "total_final": total_problems(st["bad"]),
+        "final": {k: st["bad"][k] for k in ("out_of_range_raw", "out_of_range", "folded", "under_bass",
+                                            "bass_missing_bars")},
+        "measures_dropped": measures_dropped(st["plan"], ex), "handoffs": handoffs(st["plan"]),
+        "revisions_kept": sum(1 for r in revs if r["kept"]),
+        "revisions_rejected": sum(1 for r in revs if not r["kept"]),
+        "planner_calls": st["calls"],
+    }
+
+
+def _run_ai(ex: Excerpt, roster: Roster, summary: dict, seg_len: int, n: int, ai_backend, model, log):
+    """Best-of-n: n independent AI candidates run concurrently; the checker keeps one."""
+    import threading
+    from concurrent.futures import ThreadPoolExecutor
+
+    from . import planner_ai
+    lock = threading.Lock()
+    sessions = []
+    for k in range(n):  # created here, in index order, so candidate k is always session k
+        lg = (lambda m, k=k: log(f"[candidate {k}] {m.lstrip()}")) if n > 1 else log
+        with lock:
+            sessions.append((k, lg, planner_ai.Session(summary, roster, ex, backend=ai_backend, model=model, log=lg)))
+
+    def run(item):
+        k, lg, session = item
+        st = _ai_candidate(session, ex, roster, seg_len, lock, lg)
+        st["index"] = k
+        return st
+
+    done, failed = [], []
+    with ThreadPoolExecutor(max_workers=n) as pool:
+        futs = [(item[0], pool.submit(run, item)) for item in sessions]
+        for k, f in futs:
+            try:
+                done.append(f.result())
+            except Exception as e:  # noqa: BLE001 - a failed candidate is excluded, not fatal
+                failed.append((k, e))
+                log(f"[candidate {k}] excluded: planner call failed: {type(e).__name__}: {e}")
+    if not done:
+        raise failed[0][1]
+    chosen = min(done, key=lambda st: candidate_key(st, ex))
+    if n > 1:
+        log(f"checker chose candidate {chosen['index']} of {len(done)} "
+            f"(problems: {', '.join(str(total_problems(st['bad'])) for st in done)})")
+    chosen["candidates"] = [_candidate_summary(st, ex, st is chosen) for st in done]
+    chosen["candidates_failed"] = [{"index": k, "error": type(e).__name__} for k, e in failed]
+    unselected = min(done, key=lambda st: st["index"])  # by index, never by quality
+    chosen["first_plan_unselected"] = dict(unselected["first"])
+    chosen["first_plan_unselected_index"] = unselected["index"]
+    return chosen, sessions[0][2].model_name
+
+
+def arrange(ex: Excerpt, roster: Roster, planner: str = "greedy", piece: dict | None = None,
+            seg_len: int = 4, ai_backend: str | None = None, model: str | None = None,
+            log=print, fixed_plan: dict | None = None, candidates: int = AI_CANDIDATES) -> dict:
+    piece = piece or {}
+    summary = summarize(ex, seg_len)
+    used_model = None
+    repair = planner != "as_written"  # "as written" shows the unrepaired parts: no octave repair, no folds
+    if planner == "ai":
+        st, used_model = _run_ai(ex, roster, summary, seg_len, max(1, int(candidates)), ai_backend, model, log)
+    else:
+        if planner == "fixed":
+            plan = copy.deepcopy(fixed_plan)
+            used_model = model
+        elif planner == "greedy":
+            plan = planner_greedy.plan(ex, summary, roster, seg_len)
+        elif planner == "as_written":
+            plan = planner_as_written.plan(ex, roster)
+        else:
+            raise ValueError(planner)
+        st = _settle(plan, ex, roster, seg_len, repair, log)
+    plan, exe, bad, voicing, unfit = st["plan"], st["exe"], st["bad"], st["voicing"], st["unfit"]
+    first, revisions, revision_log, role_left = st["first"], st["revisions"], st["revision_log"], st["role_left"]
+
     if not repair:
         marked = ex_mod.mark_out_of_range(exe, roster)
         if marked != len(exe.violations):  # the x noteheads must be exactly the violations
@@ -343,6 +429,14 @@ def arrange(ex: Excerpt, roster: Roster, planner: str = "greedy", piece: dict | 
         "player_activity": player_activity(exe, ex, roster),
         "violations": [v.to_json(roster) for v in exe.violations],
     }
+    if "candidates" in st:  # AI best-of-n: first_plan / revisions / final above are the chosen candidate's
+        checks["candidates"] = st["candidates"]
+        checks["candidates_failed"] = st["candidates_failed"]
+        checks["selection_rule"] = SELECTION_RULE
+        # an unselected single draft (the first candidate's first plan), so first-draft comparisons
+        # against the baseline are not flattered by the selection
+        checks["first_plan_unselected"] = st["first_plan_unselected"]
+        checks["first_plan_unselected_index"] = st["first_plan_unselected_index"]
     return {
         "piece": {k: v for k, v in piece.items() if k != "melody_map"} | {"measures": [ex.start_measure, ex.end_measure]},
         "source_parts": [sp.to_json() for sp in ex.parts],

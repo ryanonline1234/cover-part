@@ -1,6 +1,7 @@
 import { useRef, useState, type CSSProperties } from "react";
 import { ScoreView } from "../Score";
 import type { ArrangeResult, DemoIndex } from "../types";
+import { pickNote } from "./candidates";
 import { section } from "./copy";
 import { useABPlayer, useNear, useResult } from "./hooks";
 import { midiToName, partRanges, shortPiece } from "./metrics";
@@ -215,8 +216,8 @@ export function AsWritten({ index, band, setBand }: { index: DemoIndex | null; b
           )}
           {view === "cover" && ai.data && (
             <p className="why-cap">
-              Same band, planned by the AI and checked by code (precomputed). Each line keeps its color in the score below, wherever it
-              goes.
+              Same band, planned by the AI{pickNote(ai.data) ? ` (${pickNote(ai.data)})` : ""} and checked by code (precomputed). Each
+              line keeps its color in the score below, wherever it goes.
             </p>
           )}
         </div>

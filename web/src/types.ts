@@ -16,7 +16,11 @@ export interface Piece {
   source_url?: string;
   license?: string;
   /** Why this excerpt is a good test (shown under the title). */
-  why?: string;
+  why?: string | null;
+  /** Uploaded scores only: the file's name, and the engine's notes on it (parts left out, renumbered bars). */
+  uploaded?: boolean;
+  filename?: string;
+  notes?: string[];
 }
 
 export interface SourcePart {
@@ -108,6 +112,31 @@ export interface Checks {
   /** Per player: bars with something to play, of the excerpt's bars (engine >= the sitting-out check).
    *  Older results lack it; the tool then counts bars from plan.assignments. */
   player_activity?: PlayerActivity[];
+  /** AI best-of-n: every finished candidate plan; first_plan / revisions / final above are the chosen one's.
+   *  Absent on rule-based results and on AI results made before best-of-n. */
+  candidates?: Candidate[];
+  /** Candidates whose planner call failed (left out of the choice). */
+  candidates_failed?: Array<{ index: number; error?: string }>;
+  /** How the checker ranks candidates, in order: ["total_problems", "measures_dropped", "handoffs"]. */
+  selection_rule?: string[];
+  /** The first candidate's first plan (picked by index, never by quality): an unselected single draft. */
+  first_plan_unselected?: Badness;
+  first_plan_unselected_index?: number;
+}
+
+/** One independent AI plan in a best-of-n run, after its own revision loop and the same repairs. */
+export interface Candidate {
+  index: number;
+  chosen: boolean;
+  /** Problem count (the revision gate's formula) of its first plan and of its final plan. */
+  total_first?: number;
+  total_final: number;
+  final?: Badness;
+  measures_dropped?: number;
+  handoffs?: number;
+  revisions_kept?: number;
+  revisions_rejected?: number;
+  planner_calls?: number;
 }
 
 export interface PlayerActivity {

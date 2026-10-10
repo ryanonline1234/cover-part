@@ -2,13 +2,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { ABPlayer, parseMidi, type Side } from "../audio";
 import { Checks } from "../Checks";
-import { ServiceUnavailable, arrangeLive, loadIndex, loadResult, presetRef } from "../data";
+import { DEFAULT_MAX_BARS, ServiceUnavailable, arrangeLive, loadIndex, loadResult, presetRef } from "../data";
 import { LineMap } from "../LineMap";
 import { PLANNER_LABEL, barMap, downloadText, mm, slug } from "../music";
 import { Plan } from "../Plan";
 import { PlayerBar } from "../PlayerBar";
 import { ScoreView } from "../Score";
-import type { ArrangeResult, DemoIndex, Planner } from "../types";
+import { bestOfTag } from "../bestof";
+import type { ArrangeResult, DemoIndex, Piece, Planner } from "../types";
 import { bandFromRoster, bandSummary, decodeBand, encodeBand, liveIds, liveLabels, matchPreset, signature, type BandPlayer } from "./band";
 import { BandRow } from "./BandRow";
 import { CheckLine } from "./CheckLine";
@@ -17,6 +18,8 @@ import { PartCard, type PlayMode } from "./PartCard";
 import { playerTracks, usePlayerVersion } from "./parts";
 import { PrintParts } from "./PrintParts";
 import { flagsOf } from "./signals";
+import { selectionOf, uploadKey, uploadRef, useUpload, type Selection } from "./upload";
+import { UploadPanel } from "./UploadPanel";
 import "./tool.css";
 
 /** A result on the desk, and what it was made for. */
@@ -26,6 +29,8 @@ interface Shown {
   key: string;
   source: "preset" | "live";
   seconds?: number;
+  /** Set when the music was the director's own uploaded file (always a live, rule-based result). */
+  upload?: { filename: string };
 }
 
 type Live =
@@ -40,6 +45,11 @@ interface PieceFacts {
   lines: number;
   /** Length of the original excerpt, from its MIDI, in seconds (null if it couldn't be read). */
   seconds: number | null;
+}
+
+/** Facts are per piece; every uploaded score has the piece id "upload", so those go by file + bars. */
+function factsKey(s: Shown): string {
+  return s.upload ? s.key.split("|")[0] : s.result.piece.id;
 }
 
 function factsOf(r: ArrangeResult): PieceFacts {
@@ -63,6 +73,12 @@ function changedText(shownKey: string | null, wantKey: string): string {
   if (music) return "The music has changed.";
   if (band) return "The band has changed.";
   return "";
+}
+
+/** "Arriaga, String Quartet No. 1" (or just the title when the file names no composer). */
+function workLine(p: Piece): string {
+  const who = p.composer ? surname(p.composer) : "";
+  return who ? `${who}, ${shortWork(p.title)}` : shortWork(p.title);
 }
 
 /** "about 1 min 10 s" (rounded to 5 s), for a length in seconds. */
@@ -91,10 +107,20 @@ export function customNote(presetCount: number): string {
   return `Your band gets the rule-based arrangement, made and checked live. The AI arranger has only been run for the ${presetCount} preset ${presetCount === 1 ? "band" : "bands"}.`;
 }
 
+/** Shown while the music is an uploaded score. Counts come from index.json. */
+export function uploadNote(presetCount: number, pieceCount: number): string {
+  return `Your score gets the rule-based arrangement, made and checked live. There's no AI plan for an uploaded score: AI plans were made ahead of time, only for the ${presetCount} preset ${presetCount === 1 ? "band" : "bands"} on the ${pieceCount} library ${pieceCount === 1 ? "excerpt" : "excerpts"}, and the site has no live AI.`;
+}
+
+const NO_SELECTION: Selection = { ok: false, message: null };
+
 /** "a:b,c" kept readable in the hash: commas and colons are legal there. */
 function hashValue(s: string): string {
   return encodeURIComponent(s).replace(/%3A/gi, ":").replace(/%2C/gi, ",");
 }
+
+const DEFAULT_PIECE = "osq-haydn-op20no2-i-m0-14";
+const DEFAULT_BAND = "church_brass";
 
 export default function ToolPage({ query, nav, active, onHash }: Props) {
   const [index, setIndex] = useState<DemoIndex | null>(null);
@@ -115,6 +141,9 @@ export default function ToolPage({ query, nav, active, onHash }: Props) {
   const [printReady, setPrintReady] = useState(false);
   const [printWaiting, setPrintWaiting] = useState(false);
   const [facts, setFacts] = useState<ReadonlyMap<string, PieceFacts>>(() => new Map());
+  /** true while the music is the director's own file ("Use your own score") instead of a library excerpt. */
+  const [ownScore, setOwnScore] = useState(false);
+  const upload = useUpload();
   /** Screen-reader announcement: only state changes (started, done, failed), never the running clock. */
   const [announce, setAnnounce] = useState("");
 
@@ -128,9 +157,18 @@ export default function ToolPage({ query, nav, active, onHash }: Props) {
   const arrangeBtn = useRef<HTMLButtonElement>(null);
 
   const presets = useMemo(() => index?.rosters ?? [], [index]);
-  const match = useMemo(() => matchPreset(band, presets), [band, presets]);
+  /** The preset this band is (for its label), and the one whose precomputed results apply (none for an upload). */
+  const presetMatch = useMemo(() => matchPreset(band, presets), [band, presets]);
+  const match = ownScore ? null : presetMatch;
   const piece = index?.pieces.find((p) => p.id === pieceId) ?? null;
-  const wantKey = match ? `${pieceId}|${match.id}|${planner}` : `${pieceId}|custom|${signature(band)}`;
+  const sel = useMemo(
+    () => (upload.stage.stage === "ready" ? selectionOf(upload.stage.info, upload.choice) : NO_SELECTION),
+    [upload.stage, upload.choice],
+  );
+  const upRef = useMemo(() => uploadRef(upload.stage, sel), [upload.stage, sel]);
+  /** What the music is: a library piece id, or the uploaded file + movement + bars ("up:none" until chosen). */
+  const pieceKey = ownScore ? uploadKey(upload.stage, sel) : pieceId;
+  const wantKey = match ? `${pieceId}|${match.id}|${planner}` : `${pieceKey}|custom|${signature(band)}`;
   const upToDate = !!shown && shown.key === wantKey;
   const running = live.status === "running";
 
@@ -152,23 +190,30 @@ export default function ToolPage({ query, nav, active, onHash }: Props) {
       if (written.current && active) window.history.replaceState(null, "", `#/?${written.current}`);
       return;
     }
-    const p = index.pieces.find((x) => x.id === q.get("piece")) ?? index.pieces[0];
+    // Landing view: the pair where the AI-vs-rule-based difference is clearest on the check strip,
+    // and the same piece the why page opens on (chosen from comparison.json, DECISIONS.md 2026-10-10).
+    const p = index.pieces.find((x) => x.id === q.get("piece"))
+      ?? index.pieces.find((x) => x.id === DEFAULT_PIECE) ?? index.pieces[0];
     // "roster" is accepted too (older links and the why page's scoreboard use it).
-    const b = decodeBand(q.get("band") ?? q.get("roster"), presets) ?? (presets[0] ? bandFromRoster(presets[0]) : []);
+    const fallback = presets.find((r) => r.id === DEFAULT_BAND) ?? presets[0];
+    const b = decodeBand(q.get("band") ?? q.get("roster"), presets) ?? (fallback ? bandFromRoster(fallback) : []);
     setPieceId(p.id);
+    setOwnScore(false); // a link names library music (an uploaded score is never in a link)
     setBand(b);
     setPlanner(q.get("planner") === "greedy" ? "greedy" : "ai");
     autoLive.current = true; // a shared link to a custom band runs it once
   }, [index, nav]); // not on `query` alone: our own replaceState writes must not re-apply
 
   // Write the URL (replaceState: no history entry per edit, no hashchange back to us).
+  // An uploaded score can't be in the link (nothing is stored), so then the link carries the band only.
   useEffect(() => {
     if (!index || !pieceId || !band.length) return;
-    const s = `piece=${hashValue(pieceId)}&band=${hashValue(encodeBand(band, match?.id ?? null))}&planner=${match ? planner : "greedy"}`;
+    const bandPart = `band=${hashValue(encodeBand(band, match?.id ?? null))}&planner=${match ? planner : "greedy"}`;
+    const s = ownScore ? bandPart : `piece=${hashValue(pieceId)}&${bandPart}`;
     written.current = s;
     onHash(`#/?${s}`);
     if (active && window.location.hash !== `#/?${s}`) window.history.replaceState(null, "", `#/?${s}`);
-  }, [index, pieceId, band, planner, match, active, onHash]);
+  }, [index, pieceId, band, planner, match, ownScore, active, onHash]);
 
   const loadPreset = useCallback(
     (presetId: string, want: Planner, key: string) => {
@@ -197,9 +242,11 @@ export default function ToolPage({ query, nav, active, onHash }: Props) {
 
   const runLive = useCallback(() => {
     if (!band.length || !pieceId) return;
+    if (ownScore && !upRef) return; // no file, or bars that can't be arranged yet
     const ids = liveIds(band);
     const labels = liveLabels(band);
-    const key = `${pieceId}|custom|${signature(band)}`;
+    const key = `${pieceKey}|custom|${signature(band)}`;
+    const up = ownScore ? upRef : null;
     abort.current?.abort();
     const ctl = new AbortController();
     abort.current = ctl;
@@ -209,10 +256,10 @@ export default function ToolPage({ query, nav, active, onHash }: Props) {
     setLoading(false);
     setLoadError(null);
     setLive({ status: "running", started, key });
-    setAnnounce("Arranging this band. This can take a few seconds.");
+    setAnnounce(up ? "Arranging your score for this band. This can take a while." : "Arranging this band. This can take a few seconds.");
     arrangeLive(
       {
-        piece_id: pieceId,
+        ...(up ? { upload: up } : { piece_id: pieceId }),
         planner: "greedy",
         roster: {
           id: "custom",
@@ -224,11 +271,17 @@ export default function ToolPage({ query, nav, active, onHash }: Props) {
     )
       .then((result) => {
         if (n !== seq.current) return;
-        setShown({ result, key, source: "live", seconds: Math.max(1, Math.round((Date.now() - started) / 1000)) });
+        setShown({
+          result,
+          key,
+          source: "live",
+          seconds: Math.max(1, Math.round((Date.now() - started) / 1000)),
+          upload: up ? { filename: up.filename } : undefined,
+        });
         setLive({ status: "idle" });
         const flags = flagsOf(result);
         setAnnounce(
-          `Parts are ready for this band.${flags.length ? ` The checker flags: ${flags.map((f) => f.text).join("; ")}.` : ""}`,
+          `Parts are ready${up ? " from your score" : ""} for this band.${flags.length ? ` The checker flags: ${flags.map((f) => f.text).join("; ")}.` : ""}`,
         );
       })
       .catch((e: unknown) => {
@@ -241,12 +294,12 @@ export default function ToolPage({ query, nav, active, onHash }: Props) {
         }
         const message = e instanceof Error ? e.message : String(e);
         setLive({ status: "error", message, unreachable: e instanceof ServiceUnavailable });
-        setAnnounce(`Couldn't arrange this band. ${message}`);
+        setAnnounce(`Couldn't arrange ${up ? "your score" : "this band"}. ${message}`);
       })
       .finally(() => {
         if (abort.current === ctl) abort.current = null;
       });
-  }, [band, pieceId]);
+  }, [band, pieceId, pieceKey, ownScore, upRef]);
 
   // Preset bands load their precomputed result as soon as they're picked; a custom band waits for
   // "Arrange for this band", except once when it arrives in a shared link.
@@ -267,7 +320,7 @@ export default function ToolPage({ query, nav, active, onHash }: Props) {
       if (shown?.key !== wantKey) loadPreset(match.id, planner, wantKey);
     } else if (autoLive.current) {
       autoLive.current = false;
-      if (shown?.key !== wantKey) runLive();
+      if (shown?.key !== wantKey && !ownScore) runLive(); // an upload never runs by itself
     }
   }, [index, wantKey]); // only when what's wanted changes, not on every new result
 
@@ -276,11 +329,11 @@ export default function ToolPage({ query, nav, active, onHash }: Props) {
   // the length are known before arranging.
   useEffect(() => {
     if (!shown) return;
-    const id = shown.result.piece.id;
+    const id = factsKey(shown);
     setFacts((f) => (f.has(id) ? f : new Map(f).set(id, factsOf(shown.result))));
   }, [shown]);
   useEffect(() => {
-    if (!index || !pieceId || facts.has(pieceId) || match) return;
+    if (!index || !pieceId || facts.has(pieceId) || match || ownScore) return;
     const ref = index.pieces.find((p) => p.id === pieceId)?.results.find((r) => r.planner !== "as_written");
     if (!ref) return;
     let alive = true;
@@ -437,12 +490,20 @@ export default function ToolPage({ query, nav, active, onHash }: Props) {
   const presetName = (id: string) => (presets.find((r) => r.id === id)?.label ?? id).split(": ")[0];
   const elapsed = live.status === "running" ? Math.max(0, Math.floor((now - live.started) / 1000)) : 0;
   const shownPiece = result?.piece;
+  const shownUpload = shown?.upload ?? null;
+  const uploadReady = upload.stage.stage === "ready";
+  /** Arrange can't run yet: an uploaded score without a file or with bars that can't be arranged. */
+  const needsUpload = ownScore && !upRef;
   const availablePlanners = new Set(
     match && piece ? piece.results.filter((r) => r.roster_id === match.id).map((r) => r.planner) : [],
   );
   const effectivePlanner: Planner = match ? planner : "greedy";
-  const pieceFacts = facts.get(pieceId) ?? null;
-  const shownFacts = result ? facts.get(result.piece.id) ?? null : null;
+  const pieceFacts: PieceFacts | null = ownScore
+    ? upload.stage.stage === "ready"
+      ? { lines: upload.stage.info.parts.length, seconds: null }
+      : null
+    : facts.get(pieceId) ?? null;
+  const shownFacts = shown ? facts.get(factsKey(shown)) ?? null : null;
   const flags = result && upToDate ? flagsOf(result, names) : [];
   const presetCount = presets.length;
 
@@ -466,8 +527,9 @@ export default function ToolPage({ query, nav, active, onHash }: Props) {
       <div className="tool-screen">
         {/* What this is, in one breath, at every width (the header tagline hides on phones). */}
         <p className="tool-intro">
-          Pick the music and the players you have, and get one printable part per player. An AI decided who covers each line
-          for the {presetCount} preset bands; any other band gets a rule-based plan, made live. Code checks every note against
+          Pick the music (one of {index.pieces.length} library excerpts, or your own MusicXML file) and the players you have, and
+          get one printable part per player. For the {presetCount} preset bands on the library excerpts, an AI decided who covers
+          each line; any other band, and any score you bring, gets a rule-based plan, made live. Code checks every note against
           each player's range. <a href="#/why">Why it works this way&nbsp;→</a>
         </p>
 
@@ -480,15 +542,28 @@ export default function ToolPage({ query, nav, active, onHash }: Props) {
             Music
           </h2>
           <p className="step-note">
-            The library is {index.pieces.length} public-domain excerpts from string quartets. Bringing your own MusicXML isn't
-            on the site yet.
+            The library is {index.pieces.length} public-domain excerpts from string quartets, or use your own score: a MusicXML
+            file, up to {upload.stage.stage === "ready" ? upload.stage.info.maxBars : DEFAULT_MAX_BARS} bars at a time.
           </p>
           <MusicPicker
             pieces={index.pieces}
             value={pieceId}
-            onChange={setPieceId}
-            length={pieceFacts?.seconds != null ? aboutDuration(pieceFacts.seconds) : null}
+            onChange={(id) => {
+              setPieceId(id);
+              setOwnScore(false);
+            }}
+            length={!ownScore && pieceFacts?.seconds != null ? aboutDuration(pieceFacts.seconds) : null}
+            upload={{
+              on: ownScore,
+              title: uploadReady && upload.stage.stage === "ready" ? upload.stage.info.title : null,
+              onSelect: () => setOwnScore(true),
+              onFile: (f) => {
+                setOwnScore(true);
+                void upload.choose(f);
+              },
+            }}
           />
+          {ownScore && <UploadPanel upload={upload} sel={sel} />}
         </section>
 
         {/* B. Band */}
@@ -499,13 +574,14 @@ export default function ToolPage({ query, nav, active, onHash }: Props) {
             </span>
             Your band
             <span className="step-aside">
-              {band.length} {band.length === 1 ? "player" : "players"} · {match ? `preset: ${presetName(match.id)}` : "custom band"}
+              {band.length} {band.length === 1 ? "player" : "players"} ·{" "}
+              {presetMatch ? `preset: ${presetName(presetMatch.id)}` : "custom band"}
             </span>
           </h2>
-          <BandRow band={band} onChange={setBand} presets={presets} presetId={match?.id ?? null} />
+          <BandRow band={band} onChange={setBand} presets={presets} presetId={presetMatch?.id ?? null} />
           {pieceFacts && band.length > pieceFacts.lines && (!upToDate || running) && (
             <p className="band-warn">
-              This piece has {pieceFacts.lines} lines and your band has {band.length} players, so not everyone gets a line of their
+              This {ownScore ? "score" : "piece"} has {pieceFacts.lines} {pieceFacts.lines === 1 ? "line" : "lines"} and your band has {band.length} players, so not everyone gets a line of their
               own: extra players double the tune or the bass where it fits them. After arranging, the checker names anyone still
               left with little or nothing to play.
             </p>
@@ -519,7 +595,7 @@ export default function ToolPage({ query, nav, active, onHash }: Props) {
                 ref={arrangeBtn}
                 className="btn-primary"
                 onClick={arrange}
-                disabled={!band.length}
+                disabled={!band.length || (needsUpload && !running)}
                 aria-disabled={running || undefined}
               >
                 {running ? "Arranging…" : "Arrange for this band"}
@@ -542,30 +618,41 @@ export default function ToolPage({ query, nav, active, onHash }: Props) {
             <p className="arrange-status">
               {running && (
                 <>
-                  <span className="clock">{elapsed}&nbsp;s</span> Making the rule-based plan, then checking every note against
-                  every player's range.
+                  <span className="clock">{elapsed}&nbsp;s</span>{" "}
+                  {ownScore
+                    ? "Reading your score, making the rule-based plan, then checking every note against every player's range."
+                    : "Making the rule-based plan, then checking every note against every player's range."}
                 </>
               )}
               {!running && live.status === "error" && (
                 <span className="arrange-error">
-                  {live.unreachable ? `Couldn't arrange this band: ${live.message}` : live.message}{" "}
+                  {live.unreachable ? `Couldn't arrange ${ownScore ? "your score" : "this band"}: ${live.message}` : live.message}{" "}
                   {shown
                     ? "The parts below are from the last arrangement."
-                    : `Try again, or pick one of the ${presetCount} preset bands (precomputed).`}
+                    : ownScore
+                      ? "Try again, or choose other bars."
+                      : `Try again, or pick one of the ${presetCount} preset bands (precomputed).`}
                 </span>
               )}
-              {!running && live.status !== "error" && !upToDate && !match && (
+              {!running && live.status !== "error" && !upToDate && needsUpload && (
                 <>
-                  {changedText(shown?.key ?? null, wantKey)} Arrange to make the parts for this band.
+                  {uploadReady
+                    ? "Choose bars the arranger can take (see above), then arrange."
+                    : "Choose a MusicXML file above, then arrange it for this band."}
+                </>
+              )}
+              {!running && live.status !== "error" && !upToDate && !match && !needsUpload && (
+                <>
+                  {changedText(shown?.key ?? null, wantKey)} Arrange to make the parts {ownScore ? "from your score " : ""}for this band.
                 </>
               )}
               {!running && live.status !== "error" && !upToDate && match && loading && "Opening the precomputed parts…"}
               {!running && live.status !== "error" && upToDate && (
                 <span className={`arrange-done ${flags.length ? "has-flags" : ""}`}>
-                  Parts below are for this band.{" "}
+                  Parts below are {shownUpload ? "from your score, " : ""}for this band.{" "}
                   {match
                     ? "It's a preset band, so they were precomputed with both plans."
-                    : `Arranged live in ${shown?.seconds} s by the rule-based plan, then checked.`}{" "}
+                    : `Arranged live in ${shown?.seconds} s by the rule-based plan, then checked.${shownUpload ? " Nothing is stored." : ""}`}{" "}
                   {flags.length > 0 ? (
                     <>
                       <strong>The checker flags:</strong> {flags.map((f) => f.text).join("; ")}. See the numbers below and{" "}
@@ -604,7 +691,17 @@ export default function ToolPage({ query, nav, active, onHash }: Props) {
                 {(["ai", "greedy"] as const).map((p) => {
                   const enabled = p === "greedy" ? true : !!match && availablePlanners.has("ai");
                   return (
-                    <label key={p} className={`seg-opt ${effectivePlanner === p ? "is-on" : ""} ${enabled ? "" : "is-off"}`}>
+                    <label
+                      key={p}
+                      className={`seg-opt ${effectivePlanner === p ? "is-on" : ""} ${enabled ? "" : "is-off"}`}
+                      title={
+                        enabled
+                          ? undefined
+                          : ownScore
+                            ? "No AI plan for an uploaded score: AI plans were made ahead of time for the preset bands on the library excerpts."
+                            : "No AI plan for this band: AI plans were made ahead of time for the preset bands only."
+                      }
+                    >
                       <input
                         type="radio"
                         name="planner"
@@ -622,16 +719,24 @@ export default function ToolPage({ query, nav, active, onHash }: Props) {
             {result && (
               <p className="planbar-src">
                 {!upToDate
-                  ? `Below: the last arrangement (${PLANNER_LABEL[result.planner]}, ${shown?.source === "live" ? "made live" : "precomputed"}), not yet for this band.`
-                  : shown?.source === "live"
-                  ? `Rule-based plan, made and checked live${shown.seconds ? ` in ${shown.seconds} s` : ""}. No AI in this one.`
-                  : result.planner === "ai"
-                    ? `AI plan by ${result.model ?? "the AI planner"}, precomputed for this preset band. Plain code checked every note.`
-                    : "Rule-based plan, precomputed. No AI: the highest line is the melody, the lowest the bass, the rest go to the best-fitting free player."}
+                  ? `Below: the last arrangement (${shownUpload ? "your score, " : ""}${PLANNER_LABEL[result.planner]}, ${shown?.source === "live" ? "made live" : "precomputed"}), not yet for ${ownScore || shownUpload ? "this music and band" : "this band"}.`
+                  : shownUpload
+                    ? `Your score · rule-based plan, made and checked live${shown?.seconds ? ` in ${shown.seconds} s` : ""} · nothing is stored`
+                    : shown?.source === "live"
+                      ? `Rule-based plan, made and checked live${shown.seconds ? ` in ${shown.seconds} s` : ""}. No AI in this one.`
+                      : result.planner === "ai"
+                        ? `AI plan by ${result.model ?? "the AI planner"}, precomputed for this preset band${
+                            bestOfTag(result) ? ` (${bestOfTag(result)}: the checker kept the plan with the fewest problems)` : ""
+                          }. Plain code checked every note.`
+                        : "Rule-based plan, precomputed. No AI: the highest line is the melody, the lowest the bass, the rest go to the best-fitting free player."}
               </p>
             )}
           </div>
-          {(!match || shown?.source === "live") && <p className="custom-note">{customNote(presetCount)}</p>}
+          {ownScore ? (
+            <p className="custom-note">{uploadNote(presetCount, index.pieces.length)}</p>
+          ) : (
+            (!match || shown?.source === "live") && <p className="custom-note">{customNote(presetCount)}</p>
+          )}
 
           {loadError && <p className="notice notice--error">{loadError}</p>}
 
@@ -640,9 +745,13 @@ export default function ToolPage({ query, nav, active, onHash }: Props) {
               {!upToDate && !loading && (
                 <p className="stale-note">
                   These parts are for{" "}
-                  {shownPiece.id !== pieceId ? `${surname(shownPiece.composer)}, ${shortWork(shownPiece.title)}` : "the band you had before"}
+                  {shown?.key.split("|")[0] !== pieceKey
+                    ? shownUpload
+                      ? `your score${shownPiece.title ? ` “${shownPiece.title}”` : ""}, ${mm(shownPiece.measures[0], shownPiece.measures[1])}`
+                      : workLine(shownPiece)
+                    : "the band you had before"}
                   {result.roster.label ? ` (${result.roster.label.replace(/^Custom:\s*/, "")})` : ""}.{" "}
-                  {match ? "" : "Press Arrange for this band to update them."}
+                  {match ? "" : needsUpload ? "" : "Press Arrange for this band to update them."}
                 </p>
               )}
               <CheckLine result={result} names={names} />
@@ -650,14 +759,23 @@ export default function ToolPage({ query, nav, active, onHash }: Props) {
               <div className="folder-head">
                 <div className="folder-title">
                   <p className="folder-work">
-                    {surname(shownPiece.composer)}, {shortWork(shownPiece.title)}
+                    {workLine(shownPiece)}
                     {shownPiece.movement ? <span className="folder-mvt">, {shownPiece.movement}</span> : null}
                   </p>
                   <p className="folder-meta">
+                    {shownUpload ? "Your score · " : ""}
                     {mm(shownPiece.measures[0], shownPiece.measures[1])}
                     {shownFacts?.seconds != null ? `, ${aboutDuration(shownFacts.seconds)}` : ""} · for{" "}
                     {bandSummary(result.roster.players)} · {PLANNER_LABEL[result.planner]}
+                    {bestOfTag(result) ? `, ${bestOfTag(result)}` : ""}
                   </p>
+                  {shownUpload && Array.isArray(shownPiece.notes) && shownPiece.notes.length > 0 && (
+                    <ul className="folder-notes">
+                      {shownPiece.notes.map((n, i) => (
+                        <li key={i}>{n}</li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
                 <button type="button" className="btn-print" onClick={() => print(null)} disabled={printWaiting}>
                   {printWaiting ? "Preparing parts for print…" : "Print all parts"}
@@ -736,7 +854,15 @@ export default function ToolPage({ query, nav, active, onHash }: Props) {
                   <h3 className="more-title">Where each line went</h3>
                   <LineMap result={result} player={audio} />
                   <h3 className="more-title">What the checker found</h3>
-                  <Checks result={result} other={other} />
+                  <Checks
+                    result={result}
+                    other={
+                      // For one render after the shown result changes, `other` can still be the previous pair's.
+                      other && other.planner !== result.planner && other.piece.id === result.piece.id && other.roster.id === result.roster.id
+                        ? other
+                        : null
+                    }
+                  />
                   <h3 className="more-title">Who plays what, and why</h3>
                   <Plan result={result} downloads={false} />
                 </>
@@ -746,7 +872,7 @@ export default function ToolPage({ query, nav, active, onHash }: Props) {
         )}
       </div>
 
-      {result && <PrintParts result={result} names={names} only={printOnly} onReady={onPrintReady} />}
+      {result && <PrintParts result={result} names={names} only={printOnly} onReady={onPrintReady} uploaded={!!shownUpload} />}
     </main>
   );
 }

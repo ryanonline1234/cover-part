@@ -1,7 +1,10 @@
 """Vercel Python function: the engine behind the live site.
 
-  POST /api/arrange   { piece_id, roster: {id?, label?, players[]}, planner: "greedy" | "ai" } -> ArrangeResult
-  GET  /api/health    { ok: true, ai: false }   (ai: whether this deploy can run the AI planner)
+  POST /api/arrange   { piece_id | upload, roster: {id?, label?, players[]}, planner: "greedy" | "ai" } -> ArrangeResult
+                      upload = {filename, data_base64, movement_index, start_measure, end_measure}: a director's
+                      own MusicXML, arranged live with the rule-based planner (never AI), not stored
+  POST /api/inspect   { upload: {filename, data_base64} } -> {title, composer, movements[], parts[], limits, notes[]}
+  GET  /api/health    { ok: true, ai: false, upload: true }   (ai: whether this deploy can run the AI planner)
 
 vercel.json rewrites /api/(.*) to this file; FastAPI routes on the original path. Validation, the
 rule-based ("greedy") planner, the checker and the export are the engine's own code
@@ -29,8 +32,7 @@ from fastapi.responses import JSONResponse  # noqa: E402
 
 from coverpart import api as core  # noqa: E402
 
-AI_DISABLED = ("AI plans for custom bands need an API key, which isn't enabled. "
-               "The 4 preset bands have precomputed AI plans.")
+AI_DISABLED = core.AI_DISABLED  # one message: custom bands and uploaded scores get no live AI
 
 
 def ai_available() -> bool:
@@ -48,11 +50,16 @@ def engine_error(_: Request, exc: Exception) -> JSONResponse:
 
 @app.post("/api/arrange")
 def arrange(req: core.ArrangeRequest) -> dict:
-    if req.planner == "ai" and not ai_available():
+    if req.planner == "ai" and (req.upload is not None or not ai_available()):
         raise HTTPException(403, AI_DISABLED)
     return core.api_arrange(req)
 
 
+@app.post("/api/inspect")
+def inspect(req: core.InspectRequest) -> dict:
+    return core.api_inspect(req)
+
+
 @app.get("/api/health")
 def health() -> dict:
-    return {"ok": True, "ai": ai_available()}
+    return {"ok": True, "ai": ai_available(), "upload": True}

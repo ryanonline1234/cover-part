@@ -9,6 +9,8 @@ interface PlanRow {
   key: string;
   label: string;
   result: ArrangeResult;
+  /** Said before "labels as melody" under the label (e.g. how the AI plan was chosen). */
+  note?: string | null;
 }
 
 /**
@@ -125,7 +127,7 @@ export function MelodyTimeline({
             <div className="why-tl-row" key={r.key} data-row={r.key}>
               <span className="why-tl-label">
                 {r.label}
-                <small>labels as melody</small>
+                <small>{r.note ? `${r.note} · ` : ""}labels as melody</small>
               </span>
               <span className="why-tl-cells">
                 {bars.map((b, i) => {

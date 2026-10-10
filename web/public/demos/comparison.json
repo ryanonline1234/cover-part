@@ -23,7 +23,7 @@
   },
   {
    "key": "first_unfit",
-   "label": "First plan: notes that needed a single-note fold",
+   "label": "First plan (AI: an unselected single draft): notes that needed a single-note fold",
    "better": "lower"
   },
   {
@@ -44,63 +44,63 @@
  ],
  "totals": {
   "melody_id": {
-   "ai_mean": 0.732,
+   "ai_mean": 0.708,
    "greedy_mean": 0.54,
-   "ai_better": 16,
+   "ai_better": 15,
    "greedy_better": 0,
-   "tie": 8,
+   "tie": 9,
    "n": 24
   },
   "melody": {
-   "ai_mean": 0.987,
+   "ai_mean": 0.992,
    "greedy_mean": 0.965,
-   "ai_better": 3,
-   "greedy_better": 2,
-   "tie": 19,
+   "ai_better": 2,
+   "greedy_better": 1,
+   "tie": 21,
    "n": 24
   },
   "bass": {
-   "ai_mean": 0.937,
+   "ai_mean": 0.974,
    "greedy_mean": 0.873,
-   "ai_better": 17,
-   "greedy_better": 4,
-   "tie": 3,
+   "ai_better": 21,
+   "greedy_better": 1,
+   "tie": 2,
    "n": 24
   },
   "inversions": {
-   "ai_mean": 10.917,
+   "ai_mean": 3.958,
    "greedy_mean": 14.667,
-   "ai_better": 17,
-   "greedy_better": 3,
+   "ai_better": 20,
+   "greedy_better": 0,
    "tie": 4,
    "n": 24
   },
   "first_unfit": {
-   "ai_mean": 3.583,
+   "ai_mean": 3.125,
    "greedy_mean": 4.25,
-   "ai_better": 6,
-   "greedy_better": 5,
-   "tie": 13,
+   "ai_better": 7,
+   "greedy_better": 3,
+   "tie": 14,
    "n": 24
   },
   "folded": {
-   "ai_mean": 1.292,
+   "ai_mean": 0.875,
    "greedy_mean": 4.25,
    "ai_better": 9,
-   "greedy_better": 2,
-   "tie": 13,
+   "greedy_better": 1,
+   "tie": 14,
    "n": 24
   },
   "handoffs": {
-   "ai_mean": 2.167,
+   "ai_mean": 2.292,
    "greedy_mean": 2.625,
    "ai_better": 10,
-   "greedy_better": 7,
-   "tie": 7,
+   "greedy_better": 8,
+   "tie": 6,
    "n": 24
   },
   "dropped": {
-   "ai_mean": 6.583,
+   "ai_mean": 6.375,
    "greedy_mean": 4.208,
    "ai_better": 0,
    "greedy_better": 7,
@@ -114,14 +114,16 @@
    "roster": "church_brass",
    "ai": {
     "melody_id": 0.55,
-    "melody": 0.8,
-    "bass": 0.975,
+    "melody": 0.95,
+    "bass": 1.0,
     "inversions": 0,
-    "first_unfit": 16,
+    "first_unfit": 25,
     "folded": 2,
-    "handoffs": 5,
-    "dropped": 16,
+    "handoffs": 4,
+    "dropped": 8,
     "repair_rounds": 2,
+    "candidates": 3,
+    "chosen_index": 0,
     "result_id": "osq-dvorak-op96-i-m1-20__church_brass__ai"
    },
    "greedy": {
@@ -134,6 +136,8 @@
     "handoffs": 6,
     "dropped": 0,
     "repair_rounds": 0,
+    "candidates": null,
+    "chosen_index": null,
     "result_id": "osq-dvorak-op96-i-m1-20__church_brass__greedy"
    }
   },
@@ -141,7 +145,7 @@
    "piece": "osq-dvorak-op96-i-m1-20",
    "roster": "no_viola",
    "ai": {
-    "melody_id": 0.55,
+    "melody_id": 0.45,
     "melody": 1.0,
     "bass": 1.0,
     "inversions": 0,
@@ -150,6 +154,8 @@
     "handoffs": 0,
     "dropped": 0,
     "repair_rounds": 1,
+    "candidates": 3,
+    "chosen_index": 0,
     "result_id": "osq-dvorak-op96-i-m1-20__no_viola__ai"
    },
    "greedy": {
@@ -162,6 +168,8 @@
     "handoffs": 0,
     "dropped": 0,
     "repair_rounds": 0,
+    "candidates": null,
+    "chosen_index": null,
     "result_id": "osq-dvorak-op96-i-m1-20__no_viola__greedy"
    }
   },
@@ -170,14 +178,16 @@
    "roster": "sax_trio",
    "ai": {
     "melody_id": 0.55,
-    "melody": 0.95,
-    "bass": 0.984,
-    "inversions": 0,
+    "melody": 0.85,
+    "bass": 0.969,
+    "inversions": 7,
     "first_unfit": 5,
     "folded": 1,
-    "handoffs": 0,
-    "dropped": 20,
+    "handoffs": 2,
+    "dropped": 19,
     "repair_rounds": 2,
+    "candidates": 3,
+    "chosen_index": 1,
     "result_id": "osq-dvorak-op96-i-m1-20__sax_trio__ai"
    },
    "greedy": {
@@ -190,6 +200,8 @@
     "handoffs": 5,
     "dropped": 18,
     "repair_rounds": 0,
+    "candidates": null,
+    "chosen_index": null,
     "result_id": "osq-dvorak-op96-i-m1-20__sax_trio__greedy"
    }
   },
@@ -198,14 +210,16 @@
    "roster": "winds4",
    "ai": {
     "melody_id": 0.55,
-    "melody": 0.95,
+    "melody": 1.0,
     "bass": 1.0,
     "inversions": 0,
-    "first_unfit": 7,
+    "first_unfit": 2,
     "folded": 0,
-    "handoffs": 6,
-    "dropped": 4,
+    "handoffs": 5,
+    "dropped": 0,
     "repair_rounds": 2,
+    "candidates": 3,
+    "chosen_index": 2,
     "result_id": "osq-dvorak-op96-i-m1-20__winds4__ai"
    },
    "greedy": {
@@ -218,6 +232,8 @@
     "handoffs": 2,
     "dropped": 0,
     "repair_rounds": 0,
+    "candidates": null,
+    "chosen_index": null,
     "result_id": "osq-dvorak-op96-i-m1-20__winds4__greedy"
    }
   },
@@ -225,15 +241,17 @@
    "piece": "osq-dvorak-op96-ii-m1-18",
    "roster": "church_brass",
    "ai": {
-    "melody_id": 1.0,
+    "melody_id": 0.875,
     "melody": 1.0,
-    "bass": 0.963,
-    "inversions": 4,
+    "bass": 0.862,
+    "inversions": 21,
     "first_unfit": 1,
-    "folded": 0,
-    "handoffs": 3,
-    "dropped": 8,
+    "folded": 2,
+    "handoffs": 4,
+    "dropped": 18,
     "repair_rounds": 2,
+    "candidates": 3,
+    "chosen_index": 1,
     "result_id": "osq-dvorak-op96-ii-m1-18__church_brass__ai"
    },
    "greedy": {
@@ -246,6 +264,8 @@
     "handoffs": 3,
     "dropped": 0,
     "repair_rounds": 0,
+    "candidates": null,
+    "chosen_index": null,
     "result_id": "osq-dvorak-op96-ii-m1-18__church_brass__greedy"
    }
   },
@@ -253,7 +273,7 @@
    "piece": "osq-dvorak-op96-ii-m1-18",
    "roster": "no_viola",
    "ai": {
-    "melody_id": 0.938,
+    "melody_id": 0.875,
     "melody": 1.0,
     "bass": 0.991,
     "inversions": 0,
@@ -262,6 +282,8 @@
     "handoffs": 2,
     "dropped": 0,
     "repair_rounds": 0,
+    "candidates": 3,
+    "chosen_index": 0,
     "result_id": "osq-dvorak-op96-ii-m1-18__no_viola__ai"
    },
    "greedy": {
@@ -274,6 +296,8 @@
     "handoffs": 2,
     "dropped": 0,
     "repair_rounds": 0,
+    "candidates": null,
+    "chosen_index": null,
     "result_id": "osq-dvorak-op96-ii-m1-18__no_viola__greedy"
    }
   },
@@ -281,15 +305,17 @@
    "piece": "osq-dvorak-op96-ii-m1-18",
    "roster": "sax_trio",
    "ai": {
-    "melody_id": 0.875,
+    "melody_id": 1.0,
     "melody": 1.0,
-    "bass": 0.963,
-    "inversions": 6,
-    "first_unfit": 4,
-    "folded": 4,
+    "bass": 0.972,
+    "inversions": 3,
+    "first_unfit": 0,
+    "folded": 0,
     "handoffs": 2,
     "dropped": 18,
-    "repair_rounds": 2,
+    "repair_rounds": 1,
+    "candidates": 3,
+    "chosen_index": 2,
     "result_id": "osq-dvorak-op96-ii-m1-18__sax_trio__ai"
    },
    "greedy": {
@@ -302,6 +328,8 @@
     "handoffs": 0,
     "dropped": 18,
     "repair_rounds": 0,
+    "candidates": null,
+    "chosen_index": null,
     "result_id": "osq-dvorak-op96-ii-m1-18__sax_trio__greedy"
    }
   },
@@ -311,13 +339,15 @@
    "ai": {
     "melody_id": 1.0,
     "melody": 1.0,
-    "bass": 0.741,
-    "inversions": 91,
+    "bass": 1.0,
+    "inversions": 0,
     "first_unfit": 0,
     "folded": 0,
     "handoffs": 3,
     "dropped": 0,
-    "repair_rounds": 1,
+    "repair_rounds": 0,
+    "candidates": 3,
+    "chosen_index": 1,
     "result_id": "osq-dvorak-op96-ii-m1-18__winds4__ai"
    },
    "greedy": {
@@ -330,6 +360,8 @@
     "handoffs": 2,
     "dropped": 0,
     "repair_rounds": 0,
+    "candidates": null,
+    "chosen_index": null,
     "result_id": "osq-dvorak-op96-ii-m1-18__winds4__greedy"
    }
   },
@@ -339,13 +371,15 @@
    "ai": {
     "melody_id": 1.0,
     "melody": 1.0,
-    "bass": 1.0,
-    "inversions": 0,
-    "first_unfit": 8,
-    "folded": 8,
-    "handoffs": 5,
-    "dropped": 3,
-    "repair_rounds": 1,
+    "bass": 0.991,
+    "inversions": 3,
+    "first_unfit": 9,
+    "folded": 0,
+    "handoffs": 6,
+    "dropped": 4,
+    "repair_rounds": 2,
+    "candidates": 3,
+    "chosen_index": 1,
     "result_id": "osq-haydn-op20no2-i-m0-14__church_brass__ai"
    },
    "greedy": {
@@ -358,6 +392,8 @@
     "handoffs": 7,
     "dropped": 0,
     "repair_rounds": 0,
+    "candidates": null,
+    "chosen_index": null,
     "result_id": "osq-haydn-op20no2-i-m0-14__church_brass__greedy"
    }
   },
@@ -365,7 +401,7 @@
    "piece": "osq-haydn-op20no2-i-m0-14",
    "roster": "no_viola",
    "ai": {
-    "melody_id": 0.933,
+    "melody_id": 0.8,
     "melody": 1.0,
     "bass": 1.0,
     "inversions": 0,
@@ -374,6 +410,8 @@
     "handoffs": 2,
     "dropped": 0,
     "repair_rounds": 0,
+    "candidates": 3,
+    "chosen_index": 0,
     "result_id": "osq-haydn-op20no2-i-m0-14__no_viola__ai"
    },
    "greedy": {
@@ -386,6 +424,8 @@
     "handoffs": 4,
     "dropped": 0,
     "repair_rounds": 0,
+    "candidates": null,
+    "chosen_index": null,
     "result_id": "osq-haydn-op20no2-i-m0-14__no_viola__greedy"
    }
   },
@@ -393,15 +433,17 @@
    "piece": "osq-haydn-op20no2-i-m0-14",
    "roster": "sax_trio",
    "ai": {
-    "melody_id": 0.933,
+    "melody_id": 0.8,
     "melody": 1.0,
     "bass": 1.0,
     "inversions": 0,
     "first_unfit": 1,
     "folded": 1,
-    "handoffs": 4,
+    "handoffs": 3,
     "dropped": 7,
     "repair_rounds": 1,
+    "candidates": 3,
+    "chosen_index": 2,
     "result_id": "osq-haydn-op20no2-i-m0-14__sax_trio__ai"
    },
    "greedy": {
@@ -414,6 +456,8 @@
     "handoffs": 2,
     "dropped": 7,
     "repair_rounds": 0,
+    "candidates": null,
+    "chosen_index": null,
     "result_id": "osq-haydn-op20no2-i-m0-14__sax_trio__greedy"
    }
   },
@@ -421,7 +465,7 @@
    "piece": "osq-haydn-op20no2-i-m0-14",
    "roster": "winds4",
    "ai": {
-    "melody_id": 0.933,
+    "melody_id": 0.8,
     "melody": 1.0,
     "bass": 1.0,
     "inversions": 0,
@@ -429,7 +473,9 @@
     "folded": 0,
     "handoffs": 2,
     "dropped": 0,
-    "repair_rounds": 0,
+    "repair_rounds": 1,
+    "candidates": 3,
+    "chosen_index": 0,
     "result_id": "osq-haydn-op20no2-i-m0-14__winds4__ai"
    },
    "greedy": {
@@ -442,6 +488,8 @@
     "handoffs": 2,
     "dropped": 0,
     "repair_rounds": 0,
+    "candidates": null,
+    "chosen_index": null,
     "result_id": "osq-haydn-op20no2-i-m0-14__winds4__greedy"
    }
   },
@@ -458,6 +506,8 @@
     "handoffs": 0,
     "dropped": 0,
     "repair_rounds": 2,
+    "candidates": 3,
+    "chosen_index": 0,
     "result_id": "osq-haydn-op76no3-ii-m0-20__church_brass__ai"
    },
    "greedy": {
@@ -470,6 +520,8 @@
     "handoffs": 4,
     "dropped": 0,
     "repair_rounds": 0,
+    "candidates": null,
+    "chosen_index": null,
     "result_id": "osq-haydn-op76no3-ii-m0-20__church_brass__greedy"
    }
   },
@@ -486,6 +538,8 @@
     "handoffs": 0,
     "dropped": 0,
     "repair_rounds": 1,
+    "candidates": 3,
+    "chosen_index": 0,
     "result_id": "osq-haydn-op76no3-ii-m0-20__no_viola__ai"
    },
    "greedy": {
@@ -498,6 +552,8 @@
     "handoffs": 0,
     "dropped": 0,
     "repair_rounds": 0,
+    "candidates": null,
+    "chosen_index": null,
     "result_id": "osq-haydn-op76no3-ii-m0-20__no_viola__greedy"
    }
   },
@@ -507,13 +563,15 @@
    "ai": {
     "melody_id": 1.0,
     "melody": 1.0,
-    "bass": 0.95,
+    "bass": 1.0,
     "inversions": 0,
     "first_unfit": 0,
     "folded": 0,
     "handoffs": 0,
     "dropped": 21,
     "repair_rounds": 1,
+    "candidates": 3,
+    "chosen_index": 1,
     "result_id": "osq-haydn-op76no3-ii-m0-20__sax_trio__ai"
    },
    "greedy": {
@@ -526,6 +584,8 @@
     "handoffs": 0,
     "dropped": 21,
     "repair_rounds": 0,
+    "candidates": null,
+    "chosen_index": null,
     "result_id": "osq-haydn-op76no3-ii-m0-20__sax_trio__greedy"
    }
   },
@@ -542,6 +602,8 @@
     "handoffs": 0,
     "dropped": 0,
     "repair_rounds": 1,
+    "candidates": 3,
+    "chosen_index": 0,
     "result_id": "osq-haydn-op76no3-ii-m0-20__winds4__ai"
    },
    "greedy": {
@@ -554,6 +616,8 @@
     "handoffs": 2,
     "dropped": 0,
     "repair_rounds": 0,
+    "candidates": null,
+    "chosen_index": null,
     "result_id": "osq-haydn-op76no3-ii-m0-20__winds4__greedy"
    }
   },
@@ -563,13 +627,15 @@
    "ai": {
     "melody_id": 0.0,
     "melody": 1.0,
-    "bass": 0.731,
-    "inversions": 36,
-    "first_unfit": 16,
+    "bass": 0.75,
+    "inversions": 42,
+    "first_unfit": 4,
     "folded": 0,
     "handoffs": 0,
-    "dropped": 9,
+    "dropped": 10,
     "repair_rounds": 2,
+    "candidates": 3,
+    "chosen_index": 2,
     "result_id": "osq-haydn-op76no3-ii-m40-60__church_brass__ai"
    },
    "greedy": {
@@ -582,6 +648,8 @@
     "handoffs": 4,
     "dropped": 0,
     "repair_rounds": 0,
+    "candidates": null,
+    "chosen_index": null,
     "result_id": "osq-haydn-op76no3-ii-m40-60__church_brass__greedy"
    }
   },
@@ -597,7 +665,9 @@
     "folded": 0,
     "handoffs": 2,
     "dropped": 0,
-    "repair_rounds": 0,
+    "repair_rounds": 1,
+    "candidates": 3,
+    "chosen_index": 1,
     "result_id": "osq-haydn-op76no3-ii-m40-60__no_viola__ai"
    },
    "greedy": {
@@ -610,6 +680,8 @@
     "handoffs": 0,
     "dropped": 0,
     "repair_rounds": 0,
+    "candidates": null,
+    "chosen_index": null,
     "result_id": "osq-haydn-op76no3-ii-m40-60__no_viola__greedy"
    }
   },
@@ -619,13 +691,15 @@
    "ai": {
     "melody_id": 0.0,
     "melody": 1.0,
-    "bass": 0.75,
-    "inversions": 40,
+    "bass": 0.95,
+    "inversions": 6,
     "first_unfit": 0,
     "folded": 0,
     "handoffs": 1,
     "dropped": 21,
     "repair_rounds": 1,
+    "candidates": 3,
+    "chosen_index": 0,
     "result_id": "osq-haydn-op76no3-ii-m40-60__sax_trio__ai"
    },
    "greedy": {
@@ -638,6 +712,8 @@
     "handoffs": 0,
     "dropped": 21,
     "repair_rounds": 0,
+    "candidates": null,
+    "chosen_index": null,
     "result_id": "osq-haydn-op76no3-ii-m40-60__sax_trio__greedy"
    }
   },
@@ -647,13 +723,15 @@
    "ai": {
     "melody_id": 0.0,
     "melody": 1.0,
-    "bass": 0.594,
-    "inversions": 68,
+    "bass": 1.0,
+    "inversions": 0,
     "first_unfit": 0,
     "folded": 0,
-    "handoffs": 0,
-    "dropped": 0,
+    "handoffs": 1,
+    "dropped": 1,
     "repair_rounds": 1,
+    "candidates": 3,
+    "chosen_index": 0,
     "result_id": "osq-haydn-op76no3-ii-m40-60__winds4__ai"
    },
    "greedy": {
@@ -666,6 +744,8 @@
     "handoffs": 2,
     "dropped": 0,
     "repair_rounds": 0,
+    "candidates": null,
+    "chosen_index": null,
     "result_id": "osq-haydn-op76no3-ii-m40-60__winds4__greedy"
    }
   },
@@ -680,8 +760,10 @@
     "first_unfit": 15,
     "folded": 2,
     "handoffs": 9,
-    "dropped": 15,
+    "dropped": 10,
     "repair_rounds": 2,
+    "candidates": 3,
+    "chosen_index": 1,
     "result_id": "osq-hensel-eflat-iii-m1-16__church_brass__ai"
    },
    "greedy": {
@@ -694,6 +776,8 @@
     "handoffs": 7,
     "dropped": 0,
     "repair_rounds": 0,
+    "candidates": null,
+    "chosen_index": null,
     "result_id": "osq-hensel-eflat-iii-m1-16__church_brass__greedy"
    }
   },
@@ -709,7 +793,9 @@
     "folded": 0,
     "handoffs": 2,
     "dropped": 0,
-    "repair_rounds": 0,
+    "repair_rounds": 1,
+    "candidates": 3,
+    "chosen_index": 0,
     "result_id": "osq-hensel-eflat-iii-m1-16__no_viola__ai"
    },
    "greedy": {
@@ -722,6 +808,8 @@
     "handoffs": 2,
     "dropped": 0,
     "repair_rounds": 0,
+    "candidates": null,
+    "chosen_index": null,
     "result_id": "osq-hensel-eflat-iii-m1-16__no_viola__greedy"
    }
   },
@@ -731,13 +819,15 @@
    "ai": {
     "melody_id": 0.938,
     "melody": 1.0,
-    "bass": 0.902,
-    "inversions": 11,
+    "bass": 0.945,
+    "inversions": 7,
     "first_unfit": 2,
     "folded": 2,
     "handoffs": 2,
     "dropped": 16,
     "repair_rounds": 2,
+    "candidates": 3,
+    "chosen_index": 0,
     "result_id": "osq-hensel-eflat-iii-m1-16__sax_trio__ai"
    },
    "greedy": {
@@ -750,6 +840,8 @@
     "handoffs": 3,
     "dropped": 16,
     "repair_rounds": 0,
+    "candidates": null,
+    "chosen_index": null,
     "result_id": "osq-hensel-eflat-iii-m1-16__sax_trio__greedy"
    }
   },
@@ -763,9 +855,11 @@
     "inversions": 0,
     "first_unfit": 0,
     "folded": 0,
-    "handoffs": 2,
+    "handoffs": 3,
     "dropped": 0,
     "repair_rounds": 1,
+    "candidates": 3,
+    "chosen_index": 0,
     "result_id": "osq-hensel-eflat-iii-m1-16__winds4__ai"
    },
    "greedy": {
@@ -778,8 +872,17 @@
     "handoffs": 4,
     "dropped": 0,
     "repair_rounds": 0,
+    "candidates": null,
+    "chosen_index": null,
     "result_id": "osq-hensel-eflat-iii-m1-16__winds4__greedy"
    }
   }
- ]
+ ],
+ "selection": {
+  "pairs": 24,
+  "candidates_max": 3,
+  "pairs_all_candidates_finished": 24,
+  "chosen_not_first": 11,
+  "rule": "fewest problems (out of range + under the bass + 12 x bars with no bass), then fewest line-bars left out, then fewest hand-offs; the reference melody maps are never used"
+ }
 }

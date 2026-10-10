@@ -1211,6 +1211,99 @@ figcaption.why-cap {
   font-size: 0.92rem;
 }
 
+/* best of N: the AI's plans for the pair, the kept one marked (before the kept plan's own loop) */
+.why-pair-why {
+  margin: -0.4rem 0 1rem;
+}
+
+.why-cands {
+  margin: 0 0 1.3rem;
+  padding: 0 0 1.1rem;
+  border-bottom: 1px solid var(--w-rule-soft);
+}
+
+.why-cands-h {
+  margin-bottom: 0.95rem;
+  font-size: 0.95rem;
+  color: var(--w-ink-2);
+}
+
+.why-cands-k {
+  display: inline-block;
+  margin-right: 0.55rem;
+  padding: 0.02rem 0.45rem;
+  border: 1px solid var(--w-ink);
+  color: var(--w-ink);
+  font-variant-caps: all-small-caps;
+  letter-spacing: 0.08em;
+  font-weight: 650;
+}
+
+.why-cands-rows {
+  display: grid;
+  row-gap: 0.35rem;
+  max-width: 34rem;
+}
+
+.why-cand-row {
+  display: grid;
+  grid-template-columns: 4.2rem minmax(0, 1fr) 2.4rem 3.6rem;
+  align-items: center;
+  column-gap: 0.7rem;
+  font-size: 0.88rem;
+  color: var(--w-ink-3);
+}
+
+.why-cand-row.is-chosen {
+  color: var(--w-ink);
+}
+
+.why-cand-row .why-num {
+  text-align: right;
+  font-family: var(--w-display);
+  font-size: 1.02rem;
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+.why-cand-track {
+  height: 0.85rem;
+  border-left: 1px solid var(--w-ink);
+}
+
+.why-cand-bar {
+  display: block;
+  height: 100%;
+  transform-origin: left center;
+  background: transparent;
+  outline: 1px solid var(--w-ink-3);
+  outline-offset: -1px;
+}
+
+.why-cand-row.is-chosen .why-cand-bar {
+  background: var(--w-ink);
+  outline-color: var(--w-ink);
+}
+
+.why-cand-tag {
+  font-variant-caps: all-small-caps;
+  letter-spacing: 0.08em;
+  font-weight: 650;
+}
+
+.why-cand-row.is-chosen .why-cand-tag {
+  justify-self: start;
+  padding: 0 0.45rem;
+  background: var(--w-ink);
+  color: var(--w-sheet);
+}
+
+.why-cands-then {
+  margin: 0 0 0.6rem;
+  font-family: var(--w-display);
+  font-style: italic;
+  font-size: 1rem;
+}
+
 /* ---------- demo 4 ---------- */
 
 .why-panel--stack {
@@ -1336,7 +1429,7 @@ figcaption.why-cap {
 
 .why-pipe ol {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(var(--n, 5), minmax(0, 1fr));
   margin: 0;
   padding: 0;
   list-style: none;
@@ -1800,5 +1893,9 @@ figcaption.why-cap {
     flex-direction: column;
     align-items: flex-start;
     gap: 0.4rem;
+  }
+  .why-cand-row {
+    grid-template-columns: 3.6rem minmax(0, 1fr) 2.2rem 3.2rem;
+    column-gap: 0.5rem;
   }
 }

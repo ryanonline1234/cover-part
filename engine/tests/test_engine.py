@@ -475,3 +475,260 @@ def test_preset_labels_are_distinct():
         assert len(set(labels)) == len(labels), rid
     assert [p.label for p in PRESETS["no_viola"].players][:2] == ["Violin 1 (advanced)", "Violin 2"]
     assert [p.label for p in PRESETS["church_brass"].players][:2] == ["Trumpet 1", "Trumpet 2 (beginner)"]
+
+
+# --- AI best-of-3: independent candidates, the checker keeps one ------------------------------------
+from coverpart.arrange import candidate_key
+from coverpart.report import row as _report_row
+
+
+class _ScriptedSession:
+    """Candidate k (sessions are created in index order) replays scripts[k]: a first plan, then the
+    plans it returns for each revision. "fail" makes the first planner call raise."""
+    scripts: list = []
+    made = 0
+
+    def __init__(self, *a, **k):
+        self.model_name = "fake"
+        self.calls = []
+        i = type(self).made
+        type(self).made += 1
+        self._script = self.scripts[i]
+
+    def _next(self):
+        if self._script == "fail":
+            raise RuntimeError("planner unavailable")
+        self.calls.append({})
+        return self._script.pop(0) if len(self._script) > 1 else self._script[0]
+
+    def first_plan(self):
+        return self._next()
+
+    def revise(self, plan, problems, kind):
+        return self._next()
+
+
+def _three_cellos_plans():
+    under = {"summary": "", "roles": [], "dropped": _drop("P1"),  # inner lines an octave down: notes under the bass
+             "assignments": [_asg("P4", "a", 0, "bottom"), _asg("P3", "b", -1), _asg("P2", "c", -1)]}
+    clean = {"summary": "", "roles": [], "dropped": _drop("P1"),
+             "assignments": [_asg("P4", "a", 0, "bottom"), _asg("P3", "b", 0), _asg("P2", "c", 0)]}
+    return under, clean
+
+
+def test_best_of_three_keeps_fewest_problems_and_reports_an_unselected_first_draft(ex, monkeypatch):
+    import copy as _copy
+    roster = Roster("t", "t", [Player(x, "cello", "advanced") for x in "abc"])
+    under, clean = _three_cellos_plans()
+    monkeypatch.setattr(_ScriptedSession, "made", 0)
+    monkeypatch.setattr(_ScriptedSession, "scripts", [[_copy.deepcopy(under)], [_copy.deepcopy(clean)], "fail"])
+    monkeypatch.setattr(_planner_ai, "Session", _ScriptedSession)
+    logs = []
+    res = arrange(ex, roster, "ai", log=logs.append)
+    c = res["checks"]
+    cands = {x["index"]: x for x in c["candidates"]}
+    assert set(cands) == {0, 1}  # the failed candidate is excluded, and said so
+    assert c["candidates_failed"] == [{"index": 2, "error": "RuntimeError"}]
+    assert any("[candidate 2] excluded" in m for m in logs)
+    assert cands[0]["total_first"] > cands[1]["total_final"]
+    assert cands[1]["chosen"] and not cands[0]["chosen"]
+    assert {k: c["final"][k] for k in cands[1]["final"]} == cands[1]["final"]
+    assert total_problems(c["final"]) == cands[1]["total_final"]
+    # the reported first draft is candidate 0's, unselected; first_plan stays the chosen one's story
+    assert c["first_plan_unselected_index"] == 0
+    assert total_problems(c["first_plan_unselected"]) == cands[0]["total_first"]
+    assert total_problems(c["first_plan"]) == cands[1]["total_first"]
+    assert _report_row(res)["first_unfit"] == c["first_plan_unselected"]["out_of_range"]
+    assert all(a["octave_shift"] == 0 for a in res["plan"]["assignments"])  # the exported plan is the chosen one
+    assert c["selection_rule"] == ["total_problems", "measures_dropped", "handoffs"]
+
+
+def test_best_of_three_ties_go_to_fewer_bars_left_out_then_the_earlier_candidate(ex):
+    _, clean = _three_cellos_plans()
+    fewer = dict(clean, dropped=_drop("P1"))
+    more = dict(clean, assignments=clean["assignments"][:2], dropped=_drop("P1") + _drop("P2"))
+    zero = {"out_of_range": 0, "under_bass": 0, "bass_missing_bars": 0}
+    sts = [{"index": 0, "bad": zero, "plan": more}, {"index": 1, "bad": zero, "plan": fewer},
+           {"index": 2, "bad": zero, "plan": fewer}]
+    assert min(sts, key=lambda st: candidate_key(st, ex))["index"] == 1
+    worse = {"index": 3, "bad": dict(zero, under_bass=1), "plan": fewer}
+    assert min(sts + [worse], key=lambda st: candidate_key(st, ex))["index"] == 1
+
+
+def test_best_of_three_raises_when_every_candidate_fails(ex, monkeypatch):
+    monkeypatch.setattr(_ScriptedSession, "made", 0)
+    monkeypatch.setattr(_ScriptedSession, "scripts", ["fail", "fail", "fail"])
+    monkeypatch.setattr(_planner_ai, "Session", _ScriptedSession)
+    with pytest.raises(RuntimeError, match="planner unavailable"):
+        arrange(ex, PRESETS["winds4"], "ai", log=lambda m: None)
+
+
+def test_report_first_draft_falls_back_to_first_plan_without_candidates():
+    res = {"plan": {"roles": []}, "checks": {"essential_coverage": {"melody": None, "bass": 1.0},
+           "bass_inversions": 0, "first_plan": {"out_of_range": 4}, "notes_folded": 0, "handoffs": 0,
+           "measures_dropped": 0, "repair_rounds": 0}}
+    assert _report_row(res)["first_unfit"] == 4
+    res["checks"]["first_plan_unselected"] = {"out_of_range": 9}
+    assert _report_row(res)["first_unfit"] == 9
+
+
+# --- uploads: a director's own MusicXML ------------------------------------------------------------
+import base64 as _base64
+
+from coverpart import upload as _up
+from coverpart.api import AI_DISABLED, ArrangeRequest, InspectRequest, api_arrange, api_inspect
+from fastapi import HTTPException
+
+
+def _notes_sig(ex):
+    return [[(float(n.offset), tuple(p.nameWithOctave for p in n.pitches), float(n.duration.quarterLength))
+             for n in sp.part.recurse().notes] for sp in ex.parts]
+
+
+def _b64(raw: bytes) -> str:
+    return _base64.b64encode(raw).decode("ascii")
+
+
+@pytest.fixture(scope="module")
+def arriaga_upload():
+    raw = FIX.read_bytes()
+    return raw, _up.load_upload_excerpt("arriaga1.mxl", raw, 0, 1, 12)
+
+
+def test_upload_mxl_round_trip_matches_the_corpus_loader(ex, arriaga_upload):
+    raw, (uex, piece) = arriaga_upload
+    info = _up.inspect("arriaga1.mxl", raw)
+    assert info["title"] == "String Quartet No.1 in D minor" and info["composer"].startswith("Juan")
+    assert len(info["movements"]) == 4 and info["movements"][0]["first_bar"] == 1
+    assert info["parts"] == ["Violin 1", "Violin 2", "Viola", "Violoncello"]
+    assert uex.measure_numbers == list(range(1, 13)) and uex.qpm == ex.qpm
+    assert _notes_sig(uex) == _notes_sig(ex)
+    assert piece["source"] == "Uploaded by you; not stored" and piece["melody_map"] == []
+    res = arrange(uex, PRESETS["winds4"], "greedy", piece=piece, log=lambda m: None)
+    assert res["checks"]["notes_out_of_range"] == 0 and res["planner"] == "greedy" and res["model"] is None
+    assert res["piece"]["measures"] == [1, 12] and res["piece"]["title"] == info["title"]
+
+
+def test_upload_musicxml_export_of_a_corpus_excerpt_with_pickup():
+    ex = _load("osq-haydn-op76no3-ii-m0-20")
+    xml = to_musicxml(original_score(ex)).encode("utf-8")
+    info = _up.inspect("emperor.musicxml", xml)
+    assert [(m["first_bar"], m["last_bar"], m["bars"]) for m in info["movements"]] == [(0, 20, 21)]
+    whole, _ = _up.load_upload_excerpt("emperor.musicxml", xml, 0, 0, 20)
+    assert _notes_sig(whole) == _notes_sig(ex)
+    # a stretch from the middle: divisions, key, time and clef in force are carried into its first bar
+    mid, _ = _up.load_upload_excerpt("emperor.musicxml", xml, 0, 5, 12)
+    assert mid.measure_numbers == list(range(5, 13))
+    want = [[(mm, n) for mm, n in part if 5 <= mm <= 12] for part in
+            [[(m.number, n) for m in sp.part.getElementsByClass(stream.Measure) for n in m.recurse().notes] for sp in ex.parts]]
+    got = [[(m.number, n) for m in sp.part.getElementsByClass(stream.Measure) for n in m.recurse().notes] for sp in mid.parts]
+    assert [[(m, tuple(p.nameWithOctave for p in n.pitches)) for m, n in part] for part in got] == \
+           [[(m, tuple(p.nameWithOctave for p in n.pitches)) for m, n in part] for part in want]
+    first = mid.parts[0].part.getElementsByClass(stream.Measure)[0]
+    assert first.getElementsByClass("KeySignature") and first.getElementsByClass("TimeSignature")
+    assert first.getElementsByClass("Clef")
+
+
+_HAND = """<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="4.0"><work><work-title>Test Hymn</work-title></work>
+<identification><creator type="composer">A. Composer</creator></identification>
+<part-list><score-part id="P1"><part-name>Clarinet in B♭</part-name></score-part>
+<score-part id="P2"><part-name>Drum Set</part-name></score-part></part-list>
+<part id="P1">{p1}</part><part id="P2">{p2}</part></score-partwise>"""
+_ATTR = ("<attributes><divisions>1</divisions><key><fifths>0</fifths></key><time><beats>4</beats>"
+         "<beat-type>4</beat-type></time><clef><sign>G</sign><line>2</line></clef>{extra}</attributes>")
+
+
+def _hand_xml(numbers=("1", "2", "X1", "3"), chord_symbol=True) -> bytes:
+    p1, p2 = [], []
+    for i, num in enumerate(numbers):
+        attrs = _ATTR.format(extra="<transpose><diatonic>-1</diatonic><chromatic>-2</chromatic></transpose>") if i == 0 else ""
+        harm = ("<harmony><root><root-step>C</root-step></root><kind>major</kind></harmony>"
+                if chord_symbol and i == 0 else "")
+        imp = ' implicit="yes"' if num.startswith("X") else ""
+        p1.append(f'<measure number="{num}"{imp}>{attrs}{harm}<note><pitch><step>D</step><octave>5</octave></pitch>'
+                  f'<duration>4</duration><type>whole</type></note></measure>')
+        p2.append(f'<measure number="{num}"{imp}>{_ATTR.format(extra="") if i == 0 else ""}<note><unpitched>'
+                  f'<display-step>C</display-step><display-octave>5</display-octave></unpitched><duration>4</duration>'
+                  f'<type>whole</type></note></measure>')
+    return _HAND.format(p1="".join(p1), p2="".join(p2)).encode("utf-8")
+
+
+def test_upload_converts_to_sounding_pitch_and_leaves_out_percussion_and_chord_symbols():
+    raw = _hand_xml()
+    info = _up.inspect("hymn.xml", raw)
+    assert info["parts"] == ["Clarinet in B♭"] and any("Drum Set" in n for n in info["notes"])
+    # MuseScore numbers a bar left out of the count "X1": the bars are counted through, and the file says so
+    assert [(m["first_bar"], m["last_bar"], m["bars"]) for m in info["movements"]] == [(1, 4, 4)]
+    assert any("counted through" in n for n in info["notes"])
+    uex, piece = _up.load_upload_excerpt("hymn.xml", raw, 0, 1, 4)
+    assert [sp.name for sp in uex.parts] == ["Clarinet in B♭"] and uex.parts[0].instrument == "clarinet"
+    assert [n.nameWithOctave for n in uex.parts[0].part.recurse().notes] == ["C5"] * 4  # written D5 sounds C5
+    assert not list(uex.score.recurse().getElementsByClass("Harmony"))
+    assert piece["title"] == "Test Hymn" and piece["composer"] == "A. Composer"
+    res = arrange(uex, Roster("t", "t", [Player("fl", "flute")]), "greedy", piece=piece, log=lambda m: None)
+    assert res["checks"]["notes_total"] == 4 and res["checks"]["notes_out_of_range"] == 0
+
+
+def _score_xml(n_parts: int, n_bars: int, rest_parts: int = 0, rest_from: int | None = None) -> bytes:
+    from music21 import note as n21, stream as s21
+    sc = s21.Score()
+    for k in range(n_parts):
+        p = s21.Part()
+        p.partName = f"Flute {k + 1}"
+        for b in range(n_bars):
+            m = s21.Measure(number=b + 1)
+            rest = k < rest_parts or (rest_from is not None and b + 1 >= rest_from)
+            m.append(n21.Rest(quarterLength=4) if rest else n21.Note("C5", quarterLength=4))
+            p.append(m)
+        sc.insert(0, p)
+    return to_musicxml(sc).encode("utf-8")
+
+
+def test_upload_limits_are_plain_errors():
+    with pytest.raises(_up.UploadError, match="up to 32 bars"):
+        _up.load_upload_excerpt("long.musicxml", _score_xml(2, 40), 0, 1, 33)
+    with pytest.raises(_up.UploadError, match="up to 8"):
+        _up.load_upload_excerpt("big.musicxml", _score_xml(9, 4), 0, 1, 4)
+    ok, _ = _up.load_upload_excerpt("big.musicxml", _score_xml(9, 4, rest_parts=1), 0, 1, 4)  # 8 parts play
+    assert len(ok.parts) == 8
+    with pytest.raises(_up.UploadError, match="no notes in bars 3–4"):
+        _up.load_upload_excerpt("rests.musicxml", _score_xml(2, 4, rest_from=3), 0, 3, 4)
+    with pytest.raises(_up.UploadError, match="only rests or percussion"):
+        _up.inspect("rests.musicxml", _score_xml(2, 4, rest_parts=2))
+    with pytest.raises(_up.UploadError, match="has bars 1–4"):
+        _up.load_upload_excerpt("short.musicxml", _score_xml(2, 4), 0, 50, 60)
+    with pytest.raises(_up.UploadError, match="has bars 1–4"):
+        _up.load_upload_excerpt("short.musicxml", _score_xml(2, 4), 0, 1, 40)  # no silent clipping
+    with pytest.raises(_up.UploadError, match="isn't a MusicXML file"):
+        _up.decode("song.mscz", _b64(b"x"))
+    with pytest.raises(_up.UploadError) as big:
+        _up.decode("huge.musicxml", _b64(b"<" * (_up.MAX_FILE_BYTES + 1)))
+    assert big.value.status == 413
+    with pytest.raises(_up.UploadError, match="couldn't be read as MusicXML"):
+        _up.inspect("junk.musicxml", b"this is not xml")
+    with pytest.raises(_up.UploadError, match="couldn't be read as MusicXML"):
+        _up.inspect("bomb.xml", b'<?xml version="1.0"?><!DOCTYPE x [<!ENTITY a "aaaa">]><score-partwise/>')
+    with pytest.raises(_up.UploadError, match="valid compressed"):
+        _up.inspect("broken.mxl", b"not a zip")
+
+
+def test_upload_api_routes_and_ai_refusal():
+    raw = _score_xml(2, 4)
+    info = api_inspect(InspectRequest(upload={"filename": "duo.musicxml", "data_base64": _b64(raw)}))
+    assert info["parts"] == ["Flute 1", "Flute 2"] and info["limits"]["max_bars"] == 32
+    flat = api_inspect(InspectRequest(filename="duo.musicxml", data_base64=_b64(raw)))  # top-level fields too
+    assert flat["movements"] == info["movements"]
+    band = {"players": [{"id": "a", "instrument": "flute"}, {"id": "b", "instrument": "clarinet"}]}
+    upl = {"filename": "duo.musicxml", "data_base64": _b64(raw), "movement_index": 0, "start_measure": 1, "end_measure": 4}
+    res = api_arrange(ArrangeRequest(upload=upl, roster=band, planner="greedy"))
+    assert res["result_id"] == "upload__custom__greedy__live" and res["piece"]["source"] == _up.SOURCE
+    with pytest.raises(HTTPException) as no_ai:
+        api_arrange(ArrangeRequest(upload=upl, roster=band, planner="ai"))
+    assert no_ai.value.status_code == 403 and no_ai.value.detail == AI_DISABLED
+    with pytest.raises(HTTPException) as both:
+        api_arrange(ArrangeRequest(piece_id="osq-haydn-op76no3-ii-m0-20", upload=upl, roster=band, planner="greedy"))
+    assert both.value.status_code == 400
+    with pytest.raises(HTTPException) as bad_bars:
+        api_arrange(ArrangeRequest(upload=dict(upl, end_measure=40), roster=band, planner="greedy"))
+    assert bad_bars.value.status_code == 400 and "has bars 1–4" in bad_bars.value.detail

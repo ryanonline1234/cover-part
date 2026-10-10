@@ -1,6 +1,7 @@
 import { useRef, useState, type CSSProperties } from "react";
 import type { DemoIndex } from "../types";
 import { metricText } from "../Scoreboard";
+import { candidatesOf, pickShort } from "./candidates";
 import { section } from "./copy";
 import { useABPlayer, useComparison, useNear, useResult } from "./hooks";
 import { MELODY_MAPS } from "./melodyMaps";
@@ -23,6 +24,7 @@ export function StillWrong({ index }: { index: DemoIndex | null }) {
   const ai = useResult(aiId, near);
   const g = useResult(gId, near);
   const base = ai.data ?? g.data;
+  const nCand = candidatesOf(ai.data).length;
   const player = useABPlayer(base?.midi.original, base?.midi.original, base?.musicxml.original, "original");
   const rosters = index?.rosters ?? [];
   const bandLabel = (id: string) => shortBand(rosters.find((r) => r.id === id)?.label ?? id);
@@ -125,6 +127,7 @@ export function StillWrong({ index }: { index: DemoIndex | null }) {
               <figcaption className="why-cap">
                 A line-bar is one bar of one original line; counted are line-bars with notes that no player plays, summed by band.
                 Fewer left out: rule-based plan in {dropT?.greedy_better} pairs, AI in {dropT?.ai_better}, tied in {dropT?.tie}.
+                {nCand > 1 && ` AI plan: for each pair, the one the checker kept of the ${nCand} the AI wrote.`}
               </figcaption>
             </>
           ) : (
@@ -143,7 +146,7 @@ export function StillWrong({ index }: { index: DemoIndex | null }) {
               measures={ai.data.piece.measures}
               rows={[
                 { key: "greedy", label: "Rule-based plan", result: g.data },
-                { key: "ai", label: "AI plan", result: ai.data },
+                { key: "ai", label: "AI plan", result: ai.data, note: pickShort(ai.data) },
               ]}
               player={player}
             />

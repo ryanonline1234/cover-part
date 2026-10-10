@@ -67,7 +67,8 @@ def recheck_one(f: Path, manifest: dict, manifest_dir: Path) -> tuple[str, str]:
                   model=old.get("model"), log=lambda m: None)
     res["planner"] = planner
     for k in ("notes_out_of_range_before_repair", "notes_out_of_range_after_ai_revision", "repair_rounds",
-              "revisions", "first_plan", "bass_inversions_before_revision"):
+              "revisions", "first_plan", "bass_inversions_before_revision", "candidates", "candidates_failed",
+              "selection_rule", "first_plan_unselected", "first_plan_unselected_index"):
         if k in old["checks"]:
             res["checks"][k] = old["checks"][k]
     res["result_id"] = f.stem

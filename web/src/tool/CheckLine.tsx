@@ -39,8 +39,12 @@ function chipsFor(r: ArrangeResult, names?: Map<string, string>): Chip[] {
     {
       key: "melody",
       label: "Melody kept",
-      value: melody === null ? "no map" : pct(melody),
-      def: `Share of the reference melody's bars, mapped from the notes before any plan existed, that some player plays. Flagged below ${pct(MELODY_WARN)}.`,
+      value: melody === null ? "not measured" : pct(melody),
+      sub: melody === null ? "no reference melody for this music" : undefined,
+      def:
+        melody === null
+          ? "Measured only where a reference melody map exists (the library excerpts, mapped from the notes before any plan existed). This music has none, so it isn't measured; the rule-based plan treats the highest line as the melody."
+          : `Share of the reference melody's bars, mapped from the notes before any plan existed, that some player plays. Flagged below ${pct(MELODY_WARN)}.`,
       clean: melody === 1,
       warn: melody !== null && melody < MELODY_WARN,
     },

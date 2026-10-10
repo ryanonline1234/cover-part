@@ -183,6 +183,319 @@
   color: var(--ink-2);
 }
 
+/* The seventh option: the director's own score. A full-width card under the library (outside the phone
+   scroller, so it is always in view), dashed until chosen, like an empty slot in the folder. */
+.piece--upload {
+  margin-top: 0.7rem;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.85rem;
+  border-style: dashed;
+  border-top-style: dashed;
+  border-color: var(--ink-3);
+  border-top-color: var(--ink-3);
+}
+
+.piece--upload.is-on {
+  border-style: solid;
+  box-shadow: none;
+}
+
+.piece--upload.is-drag {
+  border-style: solid;
+  border-color: var(--ink);
+  background: var(--sheet);
+}
+
+.piece-plus {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border: 1.5px solid var(--ink);
+  font-family: var(--display);
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.piece--upload.is-on .piece-plus {
+  background: var(--ink);
+  color: var(--sheet);
+}
+
+.piece-upload-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.piece--upload .piece-why {
+  margin-top: 0;
+  -webkit-line-clamp: 2;
+}
+
+/* The upload panel hangs off the chosen card like the sheet it will become. */
+.upload {
+  position: relative;
+  margin-top: -1px;
+  padding: 1rem 1.1rem 1.1rem;
+  background: var(--sheet);
+  border: 1px solid var(--ink);
+  border-top: 0;
+  box-shadow: 3px 3px 0 var(--rule-soft);
+}
+
+.upload.is-drag {
+  outline: 2px dashed var(--ink);
+  outline-offset: -8px;
+}
+
+.upload-lede {
+  font-family: var(--display);
+  font-size: 1.15rem;
+  font-variation-settings: "opsz" 36;
+}
+
+.upload-how {
+  margin-top: 0.2rem;
+  font-size: 0.92rem;
+  color: var(--ink-2);
+  max-width: 70ch;
+}
+
+.upload-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.9rem;
+  margin-top: 0.8rem;
+}
+
+.btn-file {
+  padding: 0.6rem 1.1rem 0.65rem;
+  border: 1.5px solid var(--ink);
+  background: var(--ink);
+  color: var(--sheet);
+  font-family: var(--display);
+  font-size: 1.02rem;
+  font-variation-settings: "opsz" 24;
+  cursor: pointer;
+}
+
+.btn-file:hover {
+  background: #000;
+}
+
+.upload-drop-hint {
+  font-size: 0.9rem;
+  font-style: italic;
+  color: var(--ink-3);
+}
+
+/* Drag-and-drop is a desktop thing; a phone gets the button alone. */
+@media (hover: none), (pointer: coarse) {
+  .upload-drop-hint {
+    display: none;
+  }
+}
+
+.upload-again {
+  margin: 0 0 0 0.4rem;
+  padding: 0.05rem 0;
+  font-size: 0.88rem;
+}
+
+.upload-reading p {
+  font-size: 0.95rem;
+  color: var(--ink-2);
+  max-width: 70ch;
+}
+
+.upload-reading .upload-again {
+  margin: 0.5rem 0 0;
+}
+
+.upload-failed .arrange-error {
+  max-width: 70ch;
+  font-size: 0.95rem;
+}
+
+.upload-ready {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+  gap: 0.9rem 2rem;
+  align-items: start;
+}
+
+.upload-composer {
+  font-variant: small-caps;
+  letter-spacing: 0.06em;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.upload-title {
+  font-family: var(--display);
+  font-size: 1.3rem;
+  line-height: 1.2;
+  font-variation-settings: "opsz" 48;
+  overflow-wrap: anywhere;
+}
+
+.upload-parts {
+  margin-top: 0.25rem;
+  font-size: 0.9rem;
+  color: var(--ink-2);
+}
+
+.upload-notes {
+  margin: 0.4rem 0 0;
+  padding: 0 0 0 0.7rem;
+  list-style: none;
+  border-left: 2px solid var(--rule);
+  font-size: 0.84rem;
+  color: var(--ink-2);
+}
+
+.upload-file {
+  margin-top: 0.35rem;
+  font-size: 0.85rem;
+  color: var(--ink-3);
+  overflow-wrap: anywhere;
+}
+
+.upload-bars {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.upload-bars-legend {
+  padding: 0;
+  margin-bottom: 0.45rem;
+  font-family: var(--display);
+  font-size: 1.05rem;
+  font-variation-settings: "opsz" 24;
+}
+
+.upload-bars-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.6rem 1rem;
+}
+
+.ub-field {
+  display: grid;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.ub-label {
+  font-size: 0.8rem;
+  color: var(--ink-3);
+}
+
+.ub-mvt {
+  flex: 1 1 14rem;
+}
+
+.ub-static {
+  font-family: var(--display);
+  font-size: 1rem;
+}
+
+.ub-field select,
+.ub-field input {
+  width: 100%;
+  min-width: 0;
+  padding: 0.28rem 0.2rem 0.3rem 0;
+  border: 0;
+  border-bottom: 1px solid var(--ink);
+  border-radius: 0;
+  background: transparent;
+  font-family: var(--display);
+  font-size: 1.02rem;
+  font-variation-settings: "opsz" 24;
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+.ub-field select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 1.4rem;
+  background: transparent
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%231e1c18' stroke-width='1.4'/%3E%3C/svg%3E")
+    no-repeat right 0.15rem center;
+  cursor: pointer;
+  text-overflow: ellipsis;
+}
+
+.ub-num {
+  flex: 0 0 5.2rem;
+}
+
+.ub-field input[aria-invalid="true"] {
+  border-bottom: 2px solid var(--ink);
+  background: rgba(30, 28, 24, 0.05);
+}
+
+.ub-mvt-note {
+  margin-top: 0.5rem;
+  font-size: 0.84rem;
+  color: var(--ink-2);
+}
+
+.ub-note {
+  margin-top: 0.5rem;
+  font-size: 0.86rem;
+  color: var(--ink-3);
+  min-height: 1.3em;
+}
+
+.ub-note.is-bad {
+  color: var(--ink);
+  border-left: 2px solid var(--ink);
+  padding-left: 0.5rem;
+}
+
+.upload-fine {
+  grid-column: 1 / -1;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--rule-soft);
+  font-size: 0.84rem;
+  font-style: italic;
+  color: var(--ink-3);
+}
+
+@media (max-width: 640px) {
+  .upload {
+    padding: 0.85rem 0.85rem 0.95rem;
+  }
+  .upload-ready {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ub-mvt {
+    flex-basis: 100%;
+  }
+  .ub-num {
+    flex: 1 1 0;
+  }
+}
+
+.folder-notes {
+  margin: 0.35rem 0 0;
+  padding: 0 0 0 0.7rem;
+  list-style: none;
+  border-left: 2px solid var(--rule);
+  font-size: 0.84rem;
+  color: var(--ink-2);
+  max-width: 70ch;
+}
+
 /* ---------- B. band ---------- */
 
 .presets {

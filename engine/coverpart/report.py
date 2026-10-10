@@ -9,12 +9,14 @@ import json
 import sys
 from pathlib import Path
 
+from .arrange import BASS_MISSING_WEIGHT
+
 METRICS = [
     ("melody_id", "Melody identified (planner's own labels vs the reference map)", "higher"),
     ("melody", "Reference melody kept", "higher"),
     ("bass", "Harmonic bass preserved", "higher"),
     ("inversions", "Notes sounding under the bass line", "lower"),
-    ("first_unfit", "First plan: notes that needed a single-note fold", "lower"),
+    ("first_unfit", "First plan (AI: an unselected single draft): notes that needed a single-note fold", "lower"),
     ("folded", "Final: single notes octave-folded", "lower"),
     ("handoffs", "Line handoffs between players", "lower"),
     ("dropped", "Bars of music left out", "lower"),
@@ -39,11 +41,15 @@ def row(res: dict, melody_map: list[dict] | None = None) -> dict:
         "melody": c["essential_coverage"]["melody"],
         "bass": c["essential_coverage"]["bass"],
         "inversions": c.get("bass_inversions"),
-        "first_unfit": c["first_plan"]["out_of_range"],
+        # an unselected single draft when the AI ran best-of-n, so selection can't flatter this metric
+        "first_unfit": (c.get("first_plan_unselected") or c["first_plan"])["out_of_range"],
         "folded": c["notes_folded"],
         "handoffs": c["handoffs"],
         "dropped": c["measures_dropped"],
         "repair_rounds": c["repair_rounds"],
+        # AI best-of-n: how many candidates finished, and which one the checker kept (None: single plan)
+        "candidates": len(c["candidates"]) if c.get("candidates") else None,
+        "chosen_index": next((x["index"] for x in c.get("candidates") or [] if x["chosen"]), None),
     }
 
 
@@ -79,8 +85,17 @@ def build(demo_dir: Path) -> dict:
             "greedy_mean": round(sum(gr_vals) / len(gr_vals), 3) if gr_vals else None,
             "ai_better": wins, "greedy_better": losses, "tie": ties, "n": wins + losses + ties,
         }
+    sel = [r["ai"] for r in rows if r["ai"].get("candidates")]
+    selection = {
+        "pairs": len(sel),
+        "candidates_max": max((r["candidates"] for r in sel), default=None),
+        "pairs_all_candidates_finished": sum(1 for r in sel if r["candidates"] == max(x["candidates"] for x in sel)),
+        "chosen_not_first": sum(1 for r in sel if r["chosen_index"] != 0),
+        "rule": f"fewest problems (out of range + under the bass + {BASS_MISSING_WEIGHT} x bars with no bass), then "
+                "fewest line-bars left out, then fewest hand-offs; the reference melody maps are never used",
+    }
     return {"n_pairs": len(rows), "metrics": [{"key": k, "label": l, "better": b} for k, l, b in METRICS],
-            "totals": totals, "rows": rows}
+            "totals": totals, "rows": rows, "selection": selection}
 
 
 def markdown(rep: dict) -> str:

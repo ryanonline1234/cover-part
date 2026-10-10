@@ -23,6 +23,11 @@ function fetchResult(id: string): Promise<ArrangeResult> {
   return p;
 }
 
+/** demos/<id>.json through the same cache useResult uses (a later useResult of the same id is free). */
+export function loadResult(id: string): Promise<ArrangeResult> {
+  return fetchResult(id);
+}
+
 export interface Loaded<T> {
   data: T | null;
   error: string | null;

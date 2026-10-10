@@ -1,14 +1,61 @@
-import { useRef, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import type { Side } from "../audio";
-import type { Badness, Revision } from "../types";
+import type { Badness, DemoIndex, Revision } from "../types";
+import { candidatesOf, chosenOf, qualifies, type Candidate } from "./candidates";
 import { section } from "./copy";
-import { useABPlayer, useComparison, useNear, useResult } from "./hooks";
+import { loadResult, useABPlayer, useComparison, useNear, useResult } from "./hooks";
 import { verdict } from "../Scoreboard";
 import { BASS_MISSING_WEIGHT, mean1, shortPiece, totalProblems } from "./metrics";
 import { SectionShell, type Values } from "./Prose";
-import { PlayButton, Switch } from "./Transport";
+import { PlayButton, shortBand, Switch } from "./Transport";
 
-export const DEMO3 = { piece: "osq-haydn-op76no3-ii-m0-20", band: "church_brass" };
+/**
+ * Which pair demo 3 shows: the first in this order whose KEPT plan has at least one rejected and one kept
+ * revision (so the stepper shows both outcomes of the gate), then any other pair in index order.
+ * Decided from the data at load time, never hand-picked per rebuild.
+ */
+export const DEMO3_PREFERENCE: Array<{ piece: string; band: string }> = [
+  { piece: "osq-haydn-op76no3-ii-m0-20", band: "church_brass" }, // Haydn "Emperor" theme
+  { piece: "osq-hensel-eflat-iii-m1-16", band: "church_brass" },
+  { piece: "osq-haydn-op20no2-i-m0-14", band: "church_brass" },
+  { piece: "osq-dvorak-op96-ii-m1-18", band: "church_brass" }, // Dvořák Lento
+];
+
+interface Pick {
+  piece: string;
+  band: string;
+  /** Position in the search order (0 = the first preference). */
+  rank: number;
+  qualifies: boolean;
+}
+
+function useDemoPair(index: DemoIndex | null, enabled: boolean): Pick | null {
+  const [pick, setPick] = useState<Pick | null>(null);
+  useEffect(() => {
+    if (!enabled || !index) return;
+    let cancelled = false;
+    const order = [...DEMO3_PREFERENCE];
+    for (const p of index.pieces)
+      for (const r of index.rosters)
+        if (!order.some((x) => x.piece === p.id && x.band === r.id) && p.results.some((x) => x.roster_id === r.id && x.planner === "ai"))
+          order.push({ piece: p.id, band: r.id });
+    void (async () => {
+      for (let k = 0; k < order.length; k++) {
+        const r = await loadResult(`${order[k].piece}__${order[k].band}__ai`).catch(() => null);
+        if (cancelled) return;
+        if (qualifies(r)) {
+          setPick({ ...order[k], rank: k, qualifies: true });
+          return;
+        }
+      }
+      if (!cancelled) setPick({ ...order[0], rank: 0, qualifies: false });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [index, enabled]);
+  return pick;
+}
 
 type Step =
   | { kind: "draft"; label: string; bad: Badness; total: number }
@@ -51,22 +98,85 @@ function Ledger({ before, after }: { before: Badness | null; after?: Badness | n
   );
 }
 
-export function AskAI() {
+const listing = (xs: Array<string | number>) =>
+  xs.length <= 1 ? xs.join("") : `${xs.slice(0, -1).join(", ")} and ${xs[xs.length - 1]}`;
+
+/** The AI's plans for this pair, each after its own revision loop; the kept one marked. */
+function Candidates({ cands }: { cands: Candidate[] }) {
+  const max = Math.max(1, ...cands.map((c) => c.total ?? 0));
+  const ok = cands.filter((c) => c.total !== null);
+  const best = ok.length ? Math.min(...ok.map((c) => c.total as number)) : null;
+  const tied = ok.filter((c) => c.total === best);
+  const chosen = chosenOf(cands);
+  // candidate_key's last tie-break is the earlier plan, when problems, line-bars and hand-offs all tie.
+  const sameKey = (a: Candidate, b: Candidate) => a.dropped === b.dropped && a.handoffs === b.handoffs;
+  const fully = chosen ? tied.filter((t) => sameKey(t, chosen)) : [];
+  let tieNote = "";
+  if (chosen && tied.length > 1) {
+    tieNote =
+      fully.length === tied.length
+        ? ` Plans ${listing(tied.map((c) => c.n))} tie on ${best} problems, and also on line-bars left out (${chosen.dropped ?? "–"}) and hand-offs (${chosen.handoffs ?? "–"}), so the plan written first is kept.`
+        : ` Plans ${listing(tied.map((c) => c.n))} tie on ${best} problems; the tie goes to fewer line-bars left out (${listing(
+            tied.map((c) => c.dropped ?? "–"),
+          )}), then fewer hand-offs (${listing(tied.map((c) => c.handoffs ?? "–"))})${fully.length > 1 ? ", then the plan written first" : ""}.`;
+  }
+  return (
+    <figure className="why-cands" data-figure="candidates" aria-label="The AI's plans for this pair, and the one the checker kept">
+      <p className="why-cands-h">
+        <span className="why-cands-k">Best of {cands.length}</span>
+        The AI wrote {cands.length} plans on its own. Each went through the same revision loop (shown below for the kept plan), and
+        the checker kept the one with the fewest problems.
+      </p>
+      <div className="why-cands-rows">
+        {cands.map((c) => (
+          <div
+            key={c.n}
+            className={`why-cand-row${c.chosen ? " is-chosen" : ""}`}
+            data-cand={c.n}
+            data-total={c.total ?? ""}
+            data-chosen={c.chosen ? "true" : "false"}
+          >
+            <span className="why-cand-l">Plan {c.n}</span>
+            <span className="why-cand-track">
+              {c.total !== null && <span className="why-cand-bar" style={{ transform: `scaleX(${c.total / max})` } as CSSProperties} />}
+            </span>
+            <span className="why-num">{c.total ?? "–"}</span>
+            <span className="why-cand-tag">{c.chosen ? "Kept" : c.error ? "Failed" : ""}</span>
+          </div>
+        ))}
+      </div>
+      <figcaption className="why-cap">
+        Problems after each plan's own loop and repairs (same count as below).
+        {tieNote}{" "}
+        The choice never looks at the reference melody map.
+      </figcaption>
+    </figure>
+  );
+}
+
+export function AskAI({ index }: { index: DemoIndex | null }) {
   const ref = useRef<HTMLDivElement>(null);
   const near = useNear(ref);
-  const aiId = `${DEMO3.piece}__${DEMO3.band}__ai`;
-  const gId = `${DEMO3.piece}__${DEMO3.band}__greedy`;
+  const pick = useDemoPair(index, near);
+  const aiId = pick ? `${pick.piece}__${pick.band}__ai` : null;
+  const gId = pick ? `${pick.piece}__${pick.band}__greedy` : null;
   const ai = useResult(aiId, near);
   const g = useResult(gId, near);
   const cmp = useComparison();
   const [i, setI] = useState(0);
   const [side, setSide] = useState<Side>("arranged");
   const player = useABPlayer(g.data?.midi.arranged, ai.data?.midi.arranged, ai.data?.musicxml.original, side);
+  useEffect(() => setI(0), [aiId]);
+
+  const cands = candidatesOf(ai.data);
+  const chosen = chosenOf(cands);
+  // The kept plan's own loop is the result's top-level first_plan / revisions / final.
+  const c = ai.data?.checks;
+  const loop = c ? { first_plan: c.first_plan ?? null, revisions: c.revisions ?? [], final: c.final ?? null } : null;
 
   const steps: Step[] = [];
-  const c = ai.data?.checks;
-  if (c?.first_plan) steps.push({ kind: "draft", label: "First draft", bad: c.first_plan, total: totalProblems(c.first_plan) });
-  (c?.revisions ?? []).forEach((rev, k) =>
+  if (loop?.first_plan) steps.push({ kind: "draft", label: "First draft", bad: loop.first_plan, total: totalProblems(loop.first_plan) });
+  (loop?.revisions ?? []).forEach((rev, k) =>
     steps.push({
       kind: "revision",
       label: `Revision ${k + 1}`,
@@ -74,25 +184,33 @@ export function AskAI() {
       total: rev.total_after ?? (rev.after ? totalProblems(rev.after) : null),
     }),
   );
-  if (c?.final) steps.push({ kind: "final", label: "Final", bad: c.final, total: totalProblems(c.final) });
+  if (loop?.final) steps.push({ kind: "final", label: "Final", bad: loop.final, total: totalProblems(loop.final) });
   const gFinal = g.data?.checks.final ?? null;
   const gTotal = gFinal ? totalProblems(gFinal) : null;
   const step = steps[Math.min(i, Math.max(0, steps.length - 1))];
   const maxTotal = Math.max(1, ...steps.map((s) => s.total ?? 0), gTotal ?? 0);
-
   const values: Values = { ai_id: aiId, g_id: gId, bass_w: BASS_MISSING_WEIGHT };
-  if (c?.first_plan && c.final) {
-    const revs = c.revisions ?? [];
+  if (ai.data) {
+    Object.assign(values, { pair_piece: shortPiece(ai.data), pair_band: shortBand(ai.data.roster.label) });
+  }
+  if (cands.length > 1 && chosen) {
     Object.assign(values, {
-      fp_total: totalProblems(c.first_plan),
-      fp_oor: c.first_plan.out_of_range,
-      fp_under: c.first_plan.under_bass,
-      fp_missing: c.first_plan.bass_missing_bars,
+      n_cand: cands.length,
+      cand_totals: listing(cands.map((x) => (x.total === null ? `none (plan ${x.n} failed)` : `${x.total} (plan ${x.n})`))),
+      chosen_n: chosen.n,
+    });
+  }
+  if (loop?.first_plan && loop.final) {
+    const revs = loop.revisions;
+    Object.assign(values, {
+      fp_total: totalProblems(loop.first_plan),
+      fp_oor: loop.first_plan.out_of_range,
+      fp_under: loop.first_plan.under_bass,
+      fp_missing: loop.first_plan.bass_missing_bars,
       rev_count: revs.length,
       rev_kept: revs.filter((r) => r.kept).length,
       rev_rejected: revs.filter((r) => !r.kept).length,
-      final_total: totalProblems(c.final),
-      final_folded: c.notes_folded,
+      final_total: totalProblems(loop.final),
     });
   }
   if (gTotal !== null) values.g_total = gTotal;
@@ -118,20 +236,31 @@ export function AskAI() {
       id="ask-an-ai"
       index="§3"
       kicker="Demo · the checker has the last word"
-      source={`data: demos/${aiId}.json → checks.first_plan, revisions, final · demos/${gId}.json → checks.final`}
+      source={aiId && gId ? `data: demos/${aiId}.json → checks.candidates, first_plan, revisions, final · demos/${gId}.json → checks.final` : undefined}
       section={section("ask-an-ai")}
       values={values}
     >
-      <div className="why-panel" ref={ref} data-demo="ask-an-ai" data-step={i}>
+      <div className="why-panel" ref={ref} data-demo="ask-an-ai" data-step={i} data-pair={pick ? `${pick.piece}__${pick.band}` : ""}>
         <div className="why-panel-head">
-          <p className="why-panel-title">
-            {ai.data ? `${shortPiece(ai.data)} · ${ai.data.roster.label}` : "Loading…"}
-          </p>
+          <p className="why-panel-title">{ai.data ? `${shortPiece(ai.data)} · ${ai.data.roster.label}` : "Loading…"}</p>
         </div>
+        {pick && pick.rank > 0 && pick.qualifies && ai.data && (
+          <p className="why-cap why-pair-why" data-pair-rank={pick.rank}>
+            This pair is shown because its kept plan went through both a kept and a rejected revision. The scoreboard in §5 has every
+            pair.
+          </p>
+        )}
         {(ai.error || g.error) && <p className="why-error">{ai.error ?? g.error}</p>}
+
+        {cands.length > 1 && <Candidates cands={cands} />}
 
         {steps.length > 0 && (
           <>
+            {chosen && cands.length > 1 && (
+              <p className="why-cands-then" data-loop-of={chosen.n}>
+                Plan {chosen.n}, the one kept, step by step:
+              </p>
+            )}
             <ol className="why-steps" aria-label="Steps of the revision loop">
               {steps.map((s, k) => (
                 <li key={k}>
@@ -141,6 +270,7 @@ export function AskAI() {
                     aria-current={k === i ? "step" : undefined}
                     onClick={() => setI(k)}
                     data-step={k}
+                    data-rev={s.kind === "revision" ? (s.rev.kept ? "kept" : "rejected") : undefined}
                   >
                     <span className="why-step-n">{k + 1}</span>
                     <span className="why-step-l">
@@ -183,7 +313,8 @@ export function AskAI() {
                 {step.kind === "final" && (
                   <>
                     <p className="why-loop-head">
-                      What the band gets. {c ? `Single notes folded by an octave as a last resort: ${c.notes_folded}. Notes out of range in the parts: ${c.notes_out_of_range}.` : ""}
+                      {chosen ? "What the band gets: the plan the checker kept." : "What the band gets."}{" "}
+                      {c ? `Single notes folded by an octave as a last resort: ${c.notes_folded}. Notes out of range in the parts: ${c.notes_out_of_range}.` : ""}
                     </p>
                     <Ledger before={step.bad} />
                   </>
@@ -245,7 +376,7 @@ export function AskAI() {
             onChange={setSide}
             options={[
               { value: "original", label: "Rule-based plan" },
-              { value: "arranged", label: "AI plan, final" },
+              { value: "arranged", label: chosen ? "AI plan, the one kept" : "AI plan, final" },
             ]}
           />
           <PlayButton player={player} label="Play" id="ask-an-ai" />
@@ -254,3 +385,4 @@ export function AskAI() {
     </SectionShell>
   );
 }
+
