@@ -1,8 +1,8 @@
 # State — Cover Part (EvoHacks2026 entry)
-_Updated: 2026-10-10 ~11:00 PDT_
+_Updated: 2026-10-10 ~11:15 PDT_
 
 ## Now
-Product is feature-complete and committed locally (no git remote, not deployed). Final results: 48 precomputed (6 CC0 excerpts × 4 rosters × AI/baseline). Video pipeline started in notes-local/video (git-ignored): facts.md done, rules.md in flight; next = shot map → 3 script drafts → 3 judges (app-demo-video skill).
+PUBLISHED: public repo https://github.com/ryanonline1234/cover-part, live https://cover-part.vercel.app (Vercel project ryanonline1234s-projects/cover-part, CLI deploy from web/; production verified in browser 10:58). Eligibility: EvoHacks Code of Conduct §5 says "almost entirely AI without meaningful student contribution may be disqualified". Ryan chose: ask the organizers (Gmail draft created, not sent) + make his contribution real (private guide notes-local/ryan-guide.md: learn the pipeline, rewrite engine/coverpart/arranger_rules.md himself, own decisions, write description and narration in his words). Video: shot map agent running; script drafts wait on Ryan's contribution.
 
 ## Verified
 - engine/tests: 23 pass (incl. regressions for all 13 confirmed review findings).
@@ -11,6 +11,7 @@ Product is feature-complete and committed locally (no git remote, not deployed).
 - Fact sheet (notes-local/video/ground/facts.md) recomputed all scoreboard means from the 48 files: match.
 
 ## Pending (needs Ryan unless noted)
+0. Ryan: send the organizer email (Gmail draft) + Discord post; do guide Blocks A–D.
 1. Ryan: how to describe his role (rec: "I chose the project and directed Claude Code"; full breakdown in README).
 2. Ryan: go-ahead to create the public GitHub repo + deploy to Vercel (required: public repo, live link).
 3. Ryan: musician listening check of 2–3 A/B pairs (optional, strongest evidence of quality).
