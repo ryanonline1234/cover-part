@@ -47,3 +47,6 @@ A four-lens review confirmed 17 problems. Two changed the evidence.
   This was done after seeing the results, and it made the baseline stronger, not weaker. The AI's hand-off advantage fell from 20/1/3 (1.9 vs 5.25) to 10/7/7 (2.2 vs 2.6). The README reports the new numbers.
 - **The merge trade-off.** It costs Var. II winds4 and no_viola 28 notes under the bass each in the baseline, against a one-bar line swap without it. We kept it because the review flagged one-bar hand-offs as unusable parts. Set MIN_LAST_PHRASE = 1 in planner_greedy.py to revert; that's a ~3-minute rule-based rebuild.
 - **Run-to-run variation.** Re-running the AI changed some results substantially: Var. II winds4 went from 0 to 68 notes under the bass, and Dvořák Lento winds4 now has 91 because the corrected gate rejected a voicing revision. Each published AI result is a single run, and the README says so.
+
+## 2026-10-10 — Arranger rules stay as written; video next
+Ryan decided not to rewrite arranger_rules.md: he isn't a musician, so hand-written musical rules from him wouldn't be better grounded. The why-page prose is deferred too. The demo video proceeds on the current site, and its narration credits Ryan only with what he did (picked the project, chose the redesign and band-folder layout, asked for the why page, decided live-vs-precomputed, approved publishing).
