@@ -2,6 +2,8 @@
 
 **Re-score a piece for the players you actually have.** The demo site uses six public-domain string-quartet excerpts with precomputed results; the engine takes any MusicXML. Give it a score (MusicXML) and your roster ("no horns, one bassoon, three altos, the second trumpet is a beginner"). An AI arranger decides which lines carry the piece and who covers each one; plain code transposes every part and checks every note against every player's range before anything prints.
 
+**Live:** https://cover-part.vercel.app
+
 Built in 27 hours for [EvoHacks 2026](https://evohackathon2026.devpost.com) (theme: AI for Automation).
 
 ## The problem
