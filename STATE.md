@@ -1,12 +1,12 @@
 # State — Cover Part (EvoHacks2026 entry)
-_Updated: 2026-10-10 14:40 PDT_
+_Updated: 2026-10-10 20:15 PDT_
 
 ## Now
 LIVE at cover-part.vercel.app (Git-connected: every push to main deploys production).
 - **Built:** band-folder tool; upload your own MusicXML (live, rule-based, not stored); AI best-of-3 chosen by the checker for the preset results; why page with live demos plus evidence.
 - **Scoreboard (24 pairs, best-of-3):** the AI is better on melody identified (71% vs 54%), bass (97% vs 87%), notes under the bass (4.0 vs 14.7) and final folds (0.9 vs 4.25). The baseline leaves out less music (4.2 vs 6.4 line-bars).
-- **Video:** the script is locked and verified (notes-local/video/SCRIPT_FINAL.md and pipeline/spec.py; 2:51.8, 359 words). The recording workflow is running: cards, why takes and tool takes, then assembly, an independent frame review and a fix pass. Deliverables go to notes-local/video/out/.
-- **Ryan's to-dos:** narrate (teleprompter); upload to YouTube; submit Devpost by 11:15 AM 10/11. Optional: the organizer email (Gmail draft) and the why-page prose (skipped for now). The arranger rules stay as written, by Ryan's decision.
+- **Video:** recorded and assembled (notes-local/video/out/): the silent cut, a music-bed version (the app's own playback), a teleprompter version, captions, a TTS pacing guide, and SCRIPT.md, which has the recording how-to, the YouTube title/description with the AI-use disclosure, and what was and wasn't checked. Runtime 2:51.75. An independent frame review found 3 cosmetic issues, all fixed. Ryan narrates over the teleprompter; then `pipeline/add_voice.sh ~/Desktop/voice.m4a` writes out/coverpart_demo_FINAL.mp4.
+- **Ryan's to-dos:** narrate with the teleprompter (~15 min); run add_voice.sh; upload to YouTube as Public by about 10:30 AM 10/11 (the description is in SCRIPT.md); submit Devpost by 11:15 AM 10/11 (repo, live link, video, and a description with the AI-use paragraph). Optional: the organizer email (Gmail draft) and the why-page prose (skipped for now). The arranger rules stay as written, by Ryan's decision.
 
 ## Verified
 - engine/tests: 49 pass.
